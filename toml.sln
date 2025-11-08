@@ -5,9 +5,9 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Serde.CustomFormat", "src\Serde.CustomFormat.csproj", "{0DF4287F-0E09-4D12-ACD9-46211CFCC160}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Serde.Toml", "src\Serde.Toml.csproj", "{0DF4287F-0E09-4D12-ACD9-46211CFCC160}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Serde.CustomFormat.Tests", "tests\Serde.CustomFormat.Tests.csproj", "{BFB024DD-A709-4A13-84A3-3720E3BB5D0E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Serde.Toml.Tests", "tests\Serde.Toml.Tests.csproj", "{BFB024DD-A709-4A13-84A3-3720E3BB5D0E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bench", "bench\bench.csproj", "{35C1A909-217B-47CC-BA25-0BD334F36E42}"
 EndProject

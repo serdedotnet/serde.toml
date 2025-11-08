@@ -1,7 +1,7 @@
 
 using Xunit;
 
-public class CustomFormatTests
+public class TomlTests
 {
     [Fact]
     public void BasicTest()
