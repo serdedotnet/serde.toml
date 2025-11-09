@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Serde" />
+    <PackageReference Include="Tomlyn" />
   </ItemGroup>
 
 </Project>
