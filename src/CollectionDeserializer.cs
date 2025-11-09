@@ -27,11 +27,11 @@ internal sealed class CollectionDeserializer : ITypeDeserializer
         
         if (info.Kind == InfoKind.List)
         {
-            _array = value as TomlArray ?? throw new InvalidOperationException("Expected TomlArray");
+            _array = (TomlArray)value;
         }
         else if (info.Kind == InfoKind.Dictionary)
         {
-            _table = value as TomlTable ?? throw new InvalidOperationException("Expected TomlTable");
+            _table = (TomlTable)value;
             _tableKeys = _table.Keys.ToList();
             _tableKeyIndex = 0;
         }
