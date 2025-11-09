@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\Serde.CustomFormat.csproj" />
+    <ProjectReference Include="..\src\Serde.Toml.csproj" />
   </ItemGroup>
 
 </Project>
