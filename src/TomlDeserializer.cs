@@ -25,7 +25,7 @@ public sealed class TomlDeserializer : IDeserializer
     /// </summary>
     public static T Deserialize<T>(string tomlString, IDeserialize<T> deserialize)
     {
-        var model = Tomlyn.Toml.ToModel(tomlString);
+        TomlTable model = Tomlyn.Toml.ToModel(tomlString);
         var deserializer = new TomlDeserializer(model);
         var result = deserialize.Deserialize(deserializer);
         return result;
