@@ -51,7 +51,7 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
         return _currentValue switch
         {
             bool b => b,
-            _ => throw new InvalidOperationException($"Expected bool, got {_currentValue?.GetType()}")
+            _ => throw TypeMismatchException("bool")
         };
     }
 
@@ -60,7 +60,7 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
         return _currentValue switch
         {
             string s when s.Length == 1 => s[0],
-            _ => throw new InvalidOperationException($"Expected single character string, got {_currentValue?.GetType()}")
+            _ => throw TypeMismatchException("single character string")
         };
     }
 
@@ -107,7 +107,7 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
             int i => i,
             short s => s,
             byte b => b,
-            _ => throw new InvalidOperationException($"Expected integer, got {_currentValue?.GetType()}")
+            _ => throw TypeMismatchException("integer")
         };
     }
 
@@ -124,7 +124,7 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
             float f => f,
             long l => (double)l,
             int i => (double)i,
-            _ => throw new InvalidOperationException($"Expected float, got {_currentValue?.GetType()}")
+            _ => throw TypeMismatchException("float")
         };
     }
 
@@ -138,7 +138,7 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
         return _currentValue switch
         {
             string s => s,
-            _ => throw new InvalidOperationException($"Expected string, got {_currentValue?.GetType()}")
+            _ => throw TypeMismatchException("string")
         };
     }
 
@@ -149,7 +149,7 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
             DateTime dt => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
             DateTimeOffset dto => dto.UtcDateTime,
             string s => DateTime.Parse(s, null, System.Globalization.DateTimeStyles.RoundtripKind),
-            _ => throw new InvalidOperationException($"Expected DateTime, got {_currentValue?.GetType()}")
+            _ => throw TypeMismatchException("DateTime")
         };
     }
 
@@ -158,6 +158,16 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
         var s = ReadString();
         var bytes = Convert.FromBase64String(s);
         writer.Write(bytes);
+    }
+
+    private InvalidOperationException TypeMismatchException(string expectedType)
+    {
+        return new InvalidOperationException($"Expected {expectedType}, got {_currentValue?.GetType()}");
+    }
+
+    private InvalidOperationException TypeMismatchException(string expectedType, object? actualValue)
+    {
+        return new InvalidOperationException($"Expected {expectedType}, got {actualValue?.GetType()}");
     }
 
     public ITypeDeserializer ReadType(ISerdeInfo typeInfo)
@@ -231,7 +241,7 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
             if (table.TryGetValue(fieldName, out var value))
             {
                 table.Remove(fieldName);
-                return value is bool b ? b : throw new InvalidOperationException($"Expected bool, got {value?.GetType()}");
+                return value is bool b ? b : throw TypeMismatchException("bool", value);
             }
         }
         throw new InvalidOperationException($"Field not found: {info.GetFieldStringName(index)}");
@@ -245,7 +255,7 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
             if (table.TryGetValue(fieldName, out var value))
             {
                 table.Remove(fieldName);
-                return value is string s && s.Length == 1 ? s[0] : throw new InvalidOperationException($"Expected single character string, got {value?.GetType()}");
+                return value is string s && s.Length == 1 ? s[0] : throw TypeMismatchException("single character string", value);
             }
         }
         throw new InvalidOperationException($"Field not found: {info.GetFieldStringName(index)}");
@@ -300,7 +310,7 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
                     int i => i,
                     short s => s,
                     byte b => b,
-                    _ => throw new InvalidOperationException($"Expected integer, got {value?.GetType()}")
+                    _ => throw TypeMismatchException("integer", value)
                 };
             }
         }
@@ -326,7 +336,7 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
                     float f => f,
                     long l => (double)l,
                     int i => (double)i,
-                    _ => throw new InvalidOperationException($"Expected float, got {value?.GetType()}")
+                    _ => throw TypeMismatchException("float", value)
                 };
             }
         }
@@ -346,7 +356,7 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
             if (table.TryGetValue(fieldName, out var value))
             {
                 table.Remove(fieldName);
-                return value is string s ? s : throw new InvalidOperationException($"Expected string, got {value?.GetType()}");
+                return value is string s ? s : throw TypeMismatchException("string", value);
             }
         }
         throw new InvalidOperationException($"Field not found: {info.GetFieldStringName(index)}");
@@ -365,7 +375,7 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
                     DateTime dt => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
                     DateTimeOffset dto => dto.UtcDateTime,
                     string s => DateTime.Parse(s, null, System.Globalization.DateTimeStyles.RoundtripKind),
-                    _ => throw new InvalidOperationException($"Expected DateTime, got {value?.GetType()}")
+                    _ => throw TypeMismatchException("DateTime", value)
                 };
             }
         }
