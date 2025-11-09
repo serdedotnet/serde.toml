@@ -169,8 +169,8 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
     {
         return typeInfo.Kind switch
         {
-            InfoKind.List => new CollectionDeserializer(_currentValue, typeInfo),
-            InfoKind.Dictionary => new CollectionDeserializer(_currentValue, typeInfo),
+            InfoKind.List => new ListDeserializer((TomlArray)_currentValue),
+            InfoKind.Dictionary => new DictionaryDeserializer((TomlTable)_currentValue),
             InfoKind.CustomType => this,
             InfoKind.Nullable => this,
             InfoKind.Enum => this,
