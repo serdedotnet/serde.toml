@@ -498,21 +498,81 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
 
         public bool ReadBool(ISerdeInfo info, int index)
         {
-            if (_array == null || _index >= _array.Count)
+            object value;
+            
+            if (_info.Kind == InfoKind.List)
             {
-                throw new InvalidOperationException("Index out of range");
+                if (_array == null || _index >= _array.Count)
+                {
+                    throw new InvalidOperationException("Index out of range");
+                }
+                value = _array[_index++]!;
             }
-            var value = _array[_index++]!;
+            else if (_info.Kind == InfoKind.Dictionary)
+            {
+                if (_tableKeys == null || _table == null || _tableKeyIndex >= _tableKeys.Count)
+                {
+                    throw new InvalidOperationException("Index out of range");
+                }
+
+                // For dictionaries, we alternate between keys and values
+                if (_index % 2 == 0)
+                {
+                    throw new InvalidOperationException("Dictionary keys must be strings");
+                }
+                else
+                {
+                    // Reading value
+                    value = _table[_tableKeys[_tableKeyIndex]]!;
+                    _tableKeyIndex++;
+                }
+                _index++;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unsupported collection kind: {_info.Kind}");
+            }
+
             return value is bool b ? b : throw new InvalidOperationException($"Expected bool, got {value?.GetType()}");
         }
 
         public char ReadChar(ISerdeInfo info, int index)
         {
-            if (_array == null || _index >= _array.Count)
+            object value;
+            
+            if (_info.Kind == InfoKind.List)
             {
-                throw new InvalidOperationException("Index out of range");
+                if (_array == null || _index >= _array.Count)
+                {
+                    throw new InvalidOperationException("Index out of range");
+                }
+                value = _array[_index++]!;
             }
-            var value = _array[_index++]!;
+            else if (_info.Kind == InfoKind.Dictionary)
+            {
+                if (_tableKeys == null || _table == null || _tableKeyIndex >= _tableKeys.Count)
+                {
+                    throw new InvalidOperationException("Index out of range");
+                }
+
+                // For dictionaries, we alternate between keys and values
+                if (_index % 2 == 0)
+                {
+                    throw new InvalidOperationException("Dictionary keys must be strings");
+                }
+                else
+                {
+                    // Reading value
+                    value = _table[_tableKeys[_tableKeyIndex]]!;
+                    _tableKeyIndex++;
+                }
+                _index++;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unsupported collection kind: {_info.Kind}");
+            }
+
             return value is string s && s.Length == 1 ? s[0] : throw new InvalidOperationException($"Expected single character string, got {value?.GetType()}");
         }
 
@@ -553,11 +613,41 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
 
         public long ReadI64(ISerdeInfo info, int index)
         {
-            if (_array == null || _index >= _array.Count)
+            object value;
+            
+            if (_info.Kind == InfoKind.List)
             {
-                throw new InvalidOperationException("Index out of range");
+                if (_array == null || _index >= _array.Count)
+                {
+                    throw new InvalidOperationException("Index out of range");
+                }
+                value = _array[_index++]!;
             }
-            var value = _array[_index++];
+            else if (_info.Kind == InfoKind.Dictionary)
+            {
+                if (_tableKeys == null || _table == null || _tableKeyIndex >= _tableKeys.Count)
+                {
+                    throw new InvalidOperationException("Index out of range");
+                }
+
+                // For dictionaries, we alternate between keys and values
+                if (_index % 2 == 0)
+                {
+                    throw new InvalidOperationException("Dictionary keys must be strings");
+                }
+                else
+                {
+                    // Reading value
+                    value = _table[_tableKeys[_tableKeyIndex]]!;
+                    _tableKeyIndex++;
+                }
+                _index++;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unsupported collection kind: {_info.Kind}");
+            }
+
             return value switch
             {
                 long l => l,
@@ -575,11 +665,41 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
 
         public double ReadF64(ISerdeInfo info, int index)
         {
-            if (_array == null || _index >= _array.Count)
+            object value;
+            
+            if (_info.Kind == InfoKind.List)
             {
-                throw new InvalidOperationException("Index out of range");
+                if (_array == null || _index >= _array.Count)
+                {
+                    throw new InvalidOperationException("Index out of range");
+                }
+                value = _array[_index++]!;
             }
-            var value = _array[_index++];
+            else if (_info.Kind == InfoKind.Dictionary)
+            {
+                if (_tableKeys == null || _table == null || _tableKeyIndex >= _tableKeys.Count)
+                {
+                    throw new InvalidOperationException("Index out of range");
+                }
+
+                // For dictionaries, we alternate between keys and values
+                if (_index % 2 == 0)
+                {
+                    throw new InvalidOperationException("Dictionary keys must be strings");
+                }
+                else
+                {
+                    // Reading value
+                    value = _table[_tableKeys[_tableKeyIndex]]!;
+                    _tableKeyIndex++;
+                }
+                _index++;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unsupported collection kind: {_info.Kind}");
+            }
+
             return value switch
             {
                 double d => d,
@@ -638,11 +758,41 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
 
         public DateTime ReadDateTime(ISerdeInfo info, int index)
         {
-            if (_array == null || _index >= _array.Count)
+            object value;
+            
+            if (_info.Kind == InfoKind.List)
             {
-                throw new InvalidOperationException("Index out of range");
+                if (_array == null || _index >= _array.Count)
+                {
+                    throw new InvalidOperationException("Index out of range");
+                }
+                value = _array[_index++]!;
             }
-            var value = _array[_index++];
+            else if (_info.Kind == InfoKind.Dictionary)
+            {
+                if (_tableKeys == null || _table == null || _tableKeyIndex >= _tableKeys.Count)
+                {
+                    throw new InvalidOperationException("Index out of range");
+                }
+
+                // For dictionaries, we alternate between keys and values
+                if (_index % 2 == 0)
+                {
+                    throw new InvalidOperationException("Dictionary keys must be strings");
+                }
+                else
+                {
+                    // Reading value
+                    value = _table[_tableKeys[_tableKeyIndex]]!;
+                    _tableKeyIndex++;
+                }
+                _index++;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unsupported collection kind: {_info.Kind}");
+            }
+
             return value switch
             {
                 DateTime dt => DateTime.SpecifyKind(dt, DateTimeKind.Utc),

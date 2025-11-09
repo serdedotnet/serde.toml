@@ -26,6 +26,11 @@ public partial class TomlTests
         string Name,
         SimpleRecord Inner);
 
+    [GenerateSerde]
+    private partial record DictionaryRecord(
+        string Name,
+        Dictionary<string, int> Scores);
+
     [Fact]
     public void TestSerializeSimpleRecord()
     {
@@ -149,5 +154,46 @@ public partial class TomlTests
         Assert.Equal(original.Age, deserialized.Age);
         Assert.Equal(original.Score, deserialized.Score);
         Assert.Equal(original.Active, deserialized.Active);
+    }
+
+    [Fact]
+    public void TestSerializeDictionary()
+    {
+        var scores = new Dictionary<string, int>
+        {
+            { "level1", 100 },
+            { "level2", 200 },
+            { "level3", 300 }
+        };
+        var record = new DictionaryRecord("Player", scores);
+        var toml = TomlSerializer.Serialize(record);
+        
+        Assert.NotNull(toml);
+        Assert.Contains("name = \"Player\"", toml);
+        Assert.Contains("[scores]", toml);
+        Assert.Contains("level1 = 100", toml);
+        Assert.Contains("level2 = 200", toml);
+        Assert.Contains("level3 = 300", toml);
+    }
+
+    [Fact]
+    public void TestDeserializeDictionary()
+    {
+        var toml = """
+            name = "Player"
+            
+            [scores]
+            level1 = 100
+            level2 = 200
+            level3 = 300
+            """;
+        
+        var record = TomlDeserializer.Deserialize<DictionaryRecord>(toml);
+        
+        Assert.Equal("Player", record.Name);
+        Assert.Equal(3, record.Scores.Count);
+        Assert.Equal(100, record.Scores["level1"]);
+        Assert.Equal(200, record.Scores["level2"]);
+        Assert.Equal(300, record.Scores["level3"]);
     }
 }
