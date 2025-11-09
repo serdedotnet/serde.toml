@@ -11,7 +11,7 @@ namespace Serde.Toml;
 /// <summary>
 /// Implements IDeserializer for TOML format using Tomlyn library.
 /// </summary>
-public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
+public sealed class TomlDeserializer : IDeserializer
 {
     private readonly object _currentValue;
 
@@ -176,222 +176,15 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
         {
             InfoKind.List => new ListDeserializer((TomlArray)_currentValue),
             InfoKind.Dictionary => new DictionaryDeserializer((TomlTable)_currentValue),
-            InfoKind.CustomType => this,
-            InfoKind.Nullable => this,
-            InfoKind.Enum => this,
+            InfoKind.CustomType => new TableDeserializer((TomlTable)_currentValue),
+            InfoKind.Nullable => new TableDeserializer((TomlTable)_currentValue),
+            InfoKind.Enum => new TableDeserializer((TomlTable)_currentValue),
             _ => throw new ArgumentException($"Unsupported type kind: {typeInfo.Kind}")
         };
-    }
-
-    // ITypeDeserializer implementation
-    int? ITypeDeserializer.SizeOpt => _currentValue is TomlTable table ? table.Count : _currentValue is TomlArray array ? array.Count : null;
-
-    int ITypeDeserializer.TryReadIndex(ISerdeInfo info, out string? errorName)
-    {
-        errorName = null;
-        if (_currentValue is not TomlTable table)
-        {
-            return ITypeDeserializer.EndOfType;
-        }
-
-        // Find the next field that exists in the table
-        for (int i = 0; i < info.FieldCount; i++)
-        {
-            var fieldName = info.GetFieldStringName(i);
-            if (table.ContainsKey(fieldName))
-            {
-                return i;
-            }
-        }
-
-        return ITypeDeserializer.EndOfType;
-    }
-
-    T ITypeDeserializer.ReadValue<T>(ISerdeInfo info, int index, IDeserialize<T> deserialize)
-    {
-        if (_currentValue is TomlTable table)
-        {
-            var fieldName = info.GetFieldStringName(index);
-            if (table.TryGetValue(fieldName, out var value))
-            {
-                var fieldDeserializer = new TomlDeserializer(value);
-                var result = deserialize.Deserialize(fieldDeserializer);
-                // Mark as read by removing from table (to avoid re-reading)
-                table.Remove(fieldName);
-                return result;
-            }
-        }
-        throw new InvalidOperationException($"Field not found: {info.GetFieldStringName(index)}");
-    }
-
-    void ITypeDeserializer.SkipValue(ISerdeInfo info, int index)
-    {
-        if (_currentValue is TomlTable table)
-        {
-            var fieldName = info.GetFieldStringName(index);
-            table.Remove(fieldName);
-        }
-    }
-
-    bool ITypeDeserializer.ReadBool(ISerdeInfo info, int index)
-    {
-        if (_currentValue is TomlTable table)
-        {
-            var fieldName = info.GetFieldStringName(index);
-            if (table.TryGetValue(fieldName, out var value))
-            {
-                table.Remove(fieldName);
-                return value is bool b ? b : throw TypeMismatchException("bool", value);
-            }
-        }
-        throw new InvalidOperationException($"Field not found: {info.GetFieldStringName(index)}");
-    }
-
-    char ITypeDeserializer.ReadChar(ISerdeInfo info, int index)
-    {
-        if (_currentValue is TomlTable table)
-        {
-            var fieldName = info.GetFieldStringName(index);
-            if (table.TryGetValue(fieldName, out var value))
-            {
-                table.Remove(fieldName);
-                return value is string s && s.Length == 1 ? s[0] : throw TypeMismatchException("single character string", value);
-            }
-        }
-        throw new InvalidOperationException($"Field not found: {info.GetFieldStringName(index)}");
-    }
-
-    byte ITypeDeserializer.ReadU8(ISerdeInfo info, int index)
-    {
-        return Convert.ToByte(((ITypeDeserializer)this).ReadI64(info, index));
-    }
-
-    ushort ITypeDeserializer.ReadU16(ISerdeInfo info, int index)
-    {
-        return Convert.ToUInt16(((ITypeDeserializer)this).ReadI64(info, index));
-    }
-
-    uint ITypeDeserializer.ReadU32(ISerdeInfo info, int index)
-    {
-        return Convert.ToUInt32(((ITypeDeserializer)this).ReadI64(info, index));
-    }
-
-    ulong ITypeDeserializer.ReadU64(ISerdeInfo info, int index)
-    {
-        return Convert.ToUInt64(((ITypeDeserializer)this).ReadI64(info, index));
-    }
-
-    sbyte ITypeDeserializer.ReadI8(ISerdeInfo info, int index)
-    {
-        return Convert.ToSByte(((ITypeDeserializer)this).ReadI64(info, index));
-    }
-
-    short ITypeDeserializer.ReadI16(ISerdeInfo info, int index)
-    {
-        return Convert.ToInt16(((ITypeDeserializer)this).ReadI64(info, index));
-    }
-
-    int ITypeDeserializer.ReadI32(ISerdeInfo info, int index)
-    {
-        return Convert.ToInt32(((ITypeDeserializer)this).ReadI64(info, index));
-    }
-
-    long ITypeDeserializer.ReadI64(ISerdeInfo info, int index)
-    {
-        if (_currentValue is TomlTable table)
-        {
-            var fieldName = info.GetFieldStringName(index);
-            if (table.TryGetValue(fieldName, out var value))
-            {
-                table.Remove(fieldName);
-                return value switch
-                {
-                    long l => l,
-                    int i => i,
-                    short s => s,
-                    byte b => b,
-                    _ => throw TypeMismatchException("integer", value)
-                };
-            }
-        }
-        throw new InvalidOperationException($"Field not found: {info.GetFieldStringName(index)}");
-    }
-
-    float ITypeDeserializer.ReadF32(ISerdeInfo info, int index)
-    {
-        return Convert.ToSingle(((ITypeDeserializer)this).ReadF64(info, index));
-    }
-
-    double ITypeDeserializer.ReadF64(ISerdeInfo info, int index)
-    {
-        if (_currentValue is TomlTable table)
-        {
-            var fieldName = info.GetFieldStringName(index);
-            if (table.TryGetValue(fieldName, out var value))
-            {
-                table.Remove(fieldName);
-                return value switch
-                {
-                    double d => d,
-                    float f => f,
-                    long l => (double)l,
-                    int i => (double)i,
-                    _ => throw TypeMismatchException("float", value)
-                };
-            }
-        }
-        throw new InvalidOperationException($"Field not found: {info.GetFieldStringName(index)}");
-    }
-
-    decimal ITypeDeserializer.ReadDecimal(ISerdeInfo info, int index)
-    {
-        return Convert.ToDecimal(((ITypeDeserializer)this).ReadF64(info, index));
-    }
-
-    string ITypeDeserializer.ReadString(ISerdeInfo info, int index)
-    {
-        if (_currentValue is TomlTable table)
-        {
-            var fieldName = info.GetFieldStringName(index);
-            if (table.TryGetValue(fieldName, out var value))
-            {
-                table.Remove(fieldName);
-                return value is string s ? s : throw TypeMismatchException("string", value);
-            }
-        }
-        throw new InvalidOperationException($"Field not found: {info.GetFieldStringName(index)}");
-    }
-
-    DateTime ITypeDeserializer.ReadDateTime(ISerdeInfo info, int index)
-    {
-        if (_currentValue is TomlTable table)
-        {
-            var fieldName = info.GetFieldStringName(index);
-            if (table.TryGetValue(fieldName, out var value))
-            {
-                table.Remove(fieldName);
-                return value switch
-                {
-                    DateTime dt => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
-                    DateTimeOffset dto => dto.UtcDateTime,
-                    string s => DateTime.Parse(s, null, System.Globalization.DateTimeStyles.RoundtripKind),
-                    _ => throw TypeMismatchException("DateTime", value)
-                };
-            }
-        }
-        throw new InvalidOperationException($"Field not found: {info.GetFieldStringName(index)}");
-    }
-
-    void ITypeDeserializer.ReadBytes(ISerdeInfo info, int index, IBufferWriter<byte> writer)
-    {
-        var s = ((ITypeDeserializer)this).ReadString(info, index);
-        var bytes = Convert.FromBase64String(s);
-        writer.Write(bytes);
     }
 
     public void Dispose()
     {
         // Nothing to dispose
     }
-
 }
