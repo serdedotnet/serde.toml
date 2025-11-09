@@ -37,6 +37,61 @@ internal sealed class CollectionDeserializer : ITypeDeserializer
         }
     }
 
+    /// <summary>
+    /// Helper method to get the next value from the collection (List or Dictionary).
+    /// For dictionaries, this handles alternating between keys and values.
+    /// </summary>
+    private object GetNextCollectionValue()
+    {
+        if (_info.Kind == InfoKind.List)
+        {
+            if (_array == null || _index >= _array.Count)
+            {
+                throw new InvalidOperationException("Index out of range");
+            }
+            return _array[_index++]!;
+        }
+        else if (_info.Kind == InfoKind.Dictionary)
+        {
+            if (_tableKeys == null || _table == null || _tableKeyIndex >= _tableKeys.Count)
+            {
+                throw new InvalidOperationException("Index out of range");
+            }
+
+            // For dictionaries, we alternate between keys and values
+            if (_index % 2 == 0)
+            {
+                // Reading key
+                var key = _tableKeys[_tableKeyIndex];
+                _index++;
+                return key;
+            }
+            else
+            {
+                // Reading value
+                var value = _table[_tableKeys[_tableKeyIndex]]!;
+                _tableKeyIndex++;
+                _index++;
+                return value;
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException($"Unsupported collection kind: {_info.Kind}");
+        }
+    }
+
+    /// <summary>
+    /// For dictionary deserialization, ensures we're reading a value (not a key) when expecting non-string types.
+    /// </summary>
+    private void ValidateNotDictionaryKey()
+    {
+        if (_info.Kind == InfoKind.Dictionary && _index % 2 == 0)
+        {
+            throw new InvalidOperationException("Dictionary keys must be strings");
+        }
+    }
+
     public int TryReadIndex(ISerdeInfo info, out string? errorName)
     {
         errorName = null;
@@ -115,81 +170,15 @@ internal sealed class CollectionDeserializer : ITypeDeserializer
 
     public bool ReadBool(ISerdeInfo info, int index)
     {
-        object value;
-        
-        if (_info.Kind == InfoKind.List)
-        {
-            if (_array == null || _index >= _array.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
-            value = _array[_index++]!;
-        }
-        else if (_info.Kind == InfoKind.Dictionary)
-        {
-            if (_tableKeys == null || _table == null || _tableKeyIndex >= _tableKeys.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
-
-            // For dictionaries, we alternate between keys and values
-            if (_index % 2 == 0)
-            {
-                throw new InvalidOperationException("Dictionary keys must be strings");
-            }
-            else
-            {
-                // Reading value
-                value = _table[_tableKeys[_tableKeyIndex]]!;
-                _tableKeyIndex++;
-            }
-            _index++;
-        }
-        else
-        {
-            throw new InvalidOperationException($"Unsupported collection kind: {_info.Kind}");
-        }
-
+        ValidateNotDictionaryKey();
+        var value = GetNextCollectionValue();
         return value is bool b ? b : throw new InvalidOperationException($"Expected bool, got {value?.GetType()}");
     }
 
     public char ReadChar(ISerdeInfo info, int index)
     {
-        object value;
-        
-        if (_info.Kind == InfoKind.List)
-        {
-            if (_array == null || _index >= _array.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
-            value = _array[_index++]!;
-        }
-        else if (_info.Kind == InfoKind.Dictionary)
-        {
-            if (_tableKeys == null || _table == null || _tableKeyIndex >= _tableKeys.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
-
-            // For dictionaries, we alternate between keys and values
-            if (_index % 2 == 0)
-            {
-                throw new InvalidOperationException("Dictionary keys must be strings");
-            }
-            else
-            {
-                // Reading value
-                value = _table[_tableKeys[_tableKeyIndex]]!;
-                _tableKeyIndex++;
-            }
-            _index++;
-        }
-        else
-        {
-            throw new InvalidOperationException($"Unsupported collection kind: {_info.Kind}");
-        }
-
+        ValidateNotDictionaryKey();
+        var value = GetNextCollectionValue();
         return value is string s && s.Length == 1 ? s[0] : throw new InvalidOperationException($"Expected single character string, got {value?.GetType()}");
     }
 
@@ -230,41 +219,8 @@ internal sealed class CollectionDeserializer : ITypeDeserializer
 
     public long ReadI64(ISerdeInfo info, int index)
     {
-        object value;
-        
-        if (_info.Kind == InfoKind.List)
-        {
-            if (_array == null || _index >= _array.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
-            value = _array[_index++]!;
-        }
-        else if (_info.Kind == InfoKind.Dictionary)
-        {
-            if (_tableKeys == null || _table == null || _tableKeyIndex >= _tableKeys.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
-
-            // For dictionaries, we alternate between keys and values
-            if (_index % 2 == 0)
-            {
-                throw new InvalidOperationException("Dictionary keys must be strings");
-            }
-            else
-            {
-                // Reading value
-                value = _table[_tableKeys[_tableKeyIndex]]!;
-                _tableKeyIndex++;
-            }
-            _index++;
-        }
-        else
-        {
-            throw new InvalidOperationException($"Unsupported collection kind: {_info.Kind}");
-        }
-
+        ValidateNotDictionaryKey();
+        var value = GetNextCollectionValue();
         return value switch
         {
             long l => l,
@@ -282,41 +238,8 @@ internal sealed class CollectionDeserializer : ITypeDeserializer
 
     public double ReadF64(ISerdeInfo info, int index)
     {
-        object value;
-        
-        if (_info.Kind == InfoKind.List)
-        {
-            if (_array == null || _index >= _array.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
-            value = _array[_index++]!;
-        }
-        else if (_info.Kind == InfoKind.Dictionary)
-        {
-            if (_tableKeys == null || _table == null || _tableKeyIndex >= _tableKeys.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
-
-            // For dictionaries, we alternate between keys and values
-            if (_index % 2 == 0)
-            {
-                throw new InvalidOperationException("Dictionary keys must be strings");
-            }
-            else
-            {
-                // Reading value
-                value = _table[_tableKeys[_tableKeyIndex]]!;
-                _tableKeyIndex++;
-            }
-            _index++;
-        }
-        else
-        {
-            throw new InvalidOperationException($"Unsupported collection kind: {_info.Kind}");
-        }
-
+        ValidateNotDictionaryKey();
+        var value = GetNextCollectionValue();
         return value switch
         {
             double d => d,
@@ -334,82 +257,15 @@ internal sealed class CollectionDeserializer : ITypeDeserializer
 
     public string ReadString(ISerdeInfo info, int index)
     {
-        object value;
-        
-        if (_info.Kind == InfoKind.List)
-        {
-            if (_array == null || _index >= _array.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
-            value = _array[_index++]!;
-        }
-        else if (_info.Kind == InfoKind.Dictionary)
-        {
-            if (_tableKeys == null || _table == null || _tableKeyIndex >= _tableKeys.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
-
-            // For dictionaries, we alternate between keys and values
-            if (_index % 2 == 0)
-            {
-                // Reading key
-                value = _tableKeys[_tableKeyIndex];
-            }
-            else
-            {
-                // Reading value
-                value = _table[_tableKeys[_tableKeyIndex]]!;
-                _tableKeyIndex++;
-            }
-            _index++;
-        }
-        else
-        {
-            throw new InvalidOperationException($"Unsupported collection kind: {_info.Kind}");
-        }
-
+        // Strings can be both keys and values in dictionaries, so no validation needed
+        var value = GetNextCollectionValue();
         return value is string s ? s : throw new InvalidOperationException($"Expected string, got {value?.GetType()}");
     }
 
     public DateTime ReadDateTime(ISerdeInfo info, int index)
     {
-        object value;
-        
-        if (_info.Kind == InfoKind.List)
-        {
-            if (_array == null || _index >= _array.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
-            value = _array[_index++]!;
-        }
-        else if (_info.Kind == InfoKind.Dictionary)
-        {
-            if (_tableKeys == null || _table == null || _tableKeyIndex >= _tableKeys.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
-
-            // For dictionaries, we alternate between keys and values
-            if (_index % 2 == 0)
-            {
-                throw new InvalidOperationException("Dictionary keys must be strings");
-            }
-            else
-            {
-                // Reading value
-                value = _table[_tableKeys[_tableKeyIndex]]!;
-                _tableKeyIndex++;
-            }
-            _index++;
-        }
-        else
-        {
-            throw new InvalidOperationException($"Unsupported collection kind: {_info.Kind}");
-        }
-
+        ValidateNotDictionaryKey();
+        var value = GetNextCollectionValue();
         return value switch
         {
             DateTime dt => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
