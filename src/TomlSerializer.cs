@@ -167,10 +167,8 @@ public sealed class TomlSerializer : ISerializer, ITypeSerializer
                 return new EnumSerializer(this);
             case InfoKind.CustomType:
             case InfoKind.Nullable:
-                var table = new TomlTable();
-                AddToCurrentContainer(table);
-                _tableStack.Push(_currentContainer);
-                _currentContainer = table;
+                // For root-level types, use the current container directly
+                // The current container is already the root table or a nested table
                 return this;
             default:
                 throw new ArgumentException($"Unsupported type kind: {typeInfo.Kind}");
@@ -337,17 +335,16 @@ public sealed class TomlSerializer : ISerializer, ITypeSerializer
         if (_currentContainer is TomlTable table)
         {
             var fieldName = typeInfo.GetFieldStringName(index);
-            var nestedTable = new TomlTable();
-            table[fieldName] = nestedTable;
-            _tableStack.Push(_currentContainer);
-            _currentContainer = nestedTable;
-            serialize.Serialize(value, this);
-            _currentContainer = _tableStack.Pop();
+            
+            // Create a temporary serializer to determine what kind of value this is
+            var tempSerializer = new FieldValueSerializer(this, table, fieldName);
+            serialize.Serialize(value, tempSerializer);
         }
     }
 
     void ITypeSerializer.End(ISerdeInfo info)
     {
+        // Pop the stack if we're ending a nested structure
         if (_tableStack.Count > 0)
         {
             _currentContainer = _tableStack.Pop();
@@ -702,6 +699,144 @@ public sealed class TomlSerializer : ISerializer, ITypeSerializer
                 serializer._currentContainer = nestedTable;
                 serialize.Serialize(value, serializer);
                 serializer._currentContainer = serializer._tableStack.Pop();
+            }
+        }
+    }
+
+    // Helper serializer for writing field values - knows the field name and parent table
+    private sealed class FieldValueSerializer(TomlSerializer parentSerializer, TomlTable parentTable, string fieldName) : ISerializer
+    {
+        public void WriteBool(bool b)
+        {
+            parentTable[fieldName] = b;
+        }
+
+        public void WriteChar(char c)
+        {
+            parentTable[fieldName] = c.ToString();
+        }
+
+        public void WriteU8(byte b)
+        {
+            parentTable[fieldName] = (long)b;
+        }
+
+        public void WriteU16(ushort u16)
+        {
+            parentTable[fieldName] = (long)u16;
+        }
+
+        public void WriteU32(uint u32)
+        {
+            parentTable[fieldName] = (long)u32;
+        }
+
+        public void WriteU64(ulong u64)
+        {
+            parentTable[fieldName] = (long)u64;
+        }
+
+        public void WriteI8(sbyte b)
+        {
+            parentTable[fieldName] = (long)b;
+        }
+
+        public void WriteI16(short i16)
+        {
+            parentTable[fieldName] = (long)i16;
+        }
+
+        public void WriteI32(int i32)
+        {
+            parentTable[fieldName] = (long)i32;
+        }
+
+        public void WriteI64(long i64)
+        {
+            parentTable[fieldName] = i64;
+        }
+
+        public void WriteF32(float f)
+        {
+            parentTable[fieldName] = (double)f;
+        }
+
+        public void WriteF64(double d)
+        {
+            parentTable[fieldName] = d;
+        }
+
+        public void WriteDecimal(decimal d)
+        {
+            parentTable[fieldName] = (double)d;
+        }
+
+        public void WriteString(string s)
+        {
+            parentTable[fieldName] = s;
+        }
+
+        public void WriteNull()
+        {
+            // TOML doesn't have null, skip
+        }
+
+        public void WriteDateTime(DateTime dt)
+        {
+            if (dt.Kind != DateTimeKind.Utc)
+            {
+                throw new ArgumentException("DateTime must be in UTC");
+            }
+            parentTable[fieldName] = dt;
+        }
+
+        public void WriteDateTimeOffset(DateTimeOffset dt)
+        {
+            parentTable[fieldName] = dt;
+        }
+
+        public void WriteBytes(ReadOnlyMemory<byte> bytes)
+        {
+            parentTable[fieldName] = Convert.ToBase64String(bytes.Span);
+        }
+
+        public ITypeSerializer WriteCollection(ISerdeInfo info, int? size)
+        {
+            switch (info.Kind)
+            {
+                case InfoKind.Dictionary:
+                    var table = new TomlTable();
+                    parentTable[fieldName] = table;
+                    parentSerializer._tableStack.Push(parentSerializer._currentContainer);
+                    parentSerializer._currentContainer = table;
+                    return new DictionarySerializer(parentSerializer);
+                case InfoKind.List:
+                    var array = new TomlArray();
+                    parentTable[fieldName] = array;
+                    parentSerializer._tableStack.Push(parentSerializer._currentContainer);
+                    parentSerializer._currentContainer = array;
+                    return new ArraySerializer(parentSerializer);
+                default:
+                    throw new ArgumentException($"TypeKind is {info.Kind}, expected List or Dictionary");
+            }
+        }
+
+        public ITypeSerializer WriteType(ISerdeInfo typeInfo)
+        {
+            switch (typeInfo.Kind)
+            {
+                case InfoKind.Enum:
+                    return new EnumSerializer(parentSerializer);
+                case InfoKind.CustomType:
+                case InfoKind.Nullable:
+                    // Create a nested table for custom types
+                    var nestedTable = new TomlTable();
+                    parentTable[fieldName] = nestedTable;
+                    parentSerializer._tableStack.Push(parentSerializer._currentContainer);
+                    parentSerializer._currentContainer = nestedTable;
+                    return parentSerializer;
+                default:
+                    throw new ArgumentException($"Unsupported type kind: {typeInfo.Kind}");
             }
         }
     }
