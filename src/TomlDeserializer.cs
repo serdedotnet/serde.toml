@@ -43,11 +43,6 @@ public sealed class TomlDeserializer : IDeserializer, ITypeDeserializer
 
     public T? ReadNullableRef<T>(IDeserialize<T> deserialize) where T : class
     {
-        // TOML doesn't have null values - throw if we encounter one
-        if (_currentValue == null)
-        {
-            throw new InvalidOperationException("TOML does not support null values");
-        }
         return deserialize.Deserialize(this);
     }
 
