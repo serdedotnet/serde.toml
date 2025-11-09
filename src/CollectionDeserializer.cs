@@ -45,7 +45,7 @@ internal sealed class CollectionDeserializer : ITypeDeserializer
     {
         if (_info.Kind == InfoKind.List)
         {
-            if (_array == null || _index >= _array.Count)
+            if (_index >= _array!.Count)
             {
                 throw new InvalidOperationException("Index out of range");
             }
@@ -53,7 +53,7 @@ internal sealed class CollectionDeserializer : ITypeDeserializer
         }
         else if (_info.Kind == InfoKind.Dictionary)
         {
-            if (_tableKeys == null || _table == null || _tableKeyIndex >= _tableKeys.Count)
+            if (_tableKeyIndex >= _tableKeys!.Count)
             {
                 throw new InvalidOperationException("Index out of range");
             }
@@ -69,7 +69,7 @@ internal sealed class CollectionDeserializer : ITypeDeserializer
             else
             {
                 // Reading value
-                var value = _table[_tableKeys[_tableKeyIndex]]!;
+                var value = _table![_tableKeys[_tableKeyIndex]]!;
                 _tableKeyIndex++;
                 _index++;
                 return value;
@@ -98,7 +98,7 @@ internal sealed class CollectionDeserializer : ITypeDeserializer
 
         if (_info.Kind == InfoKind.List)
         {
-            if (_array != null && _index < _array.Count)
+            if (_index < _array!.Count)
             {
                 return _index;
             }
@@ -106,7 +106,7 @@ internal sealed class CollectionDeserializer : ITypeDeserializer
         }
         else if (_info.Kind == InfoKind.Dictionary)
         {
-            if (_tableKeys != null && _tableKeyIndex < _tableKeys.Count)
+            if (_tableKeyIndex < _tableKeys!.Count)
             {
                 return _index;
             }
