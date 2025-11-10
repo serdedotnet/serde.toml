@@ -115,15 +115,14 @@ public sealed class TomlSerializer : ISerializer, ITypeSerializer
 
     public void WriteNull()
     {
-        // TOML doesn't have a null value, skip it
+        throw new NotSupportedException("TOML does not support null values");
     }
 
     public void WriteDateTime(DateTime dt)
     {
-        if (dt.Kind != DateTimeKind.Utc)
-        {
-            throw new ArgumentException("DateTime must be in UTC");
-        }
+        // TOML supports both UTC and local datetime formats
+        // For local datetime (DateTimeKind.Local or Unspecified), use as-is
+        // For UTC (DateTimeKind.Utc), it will be serialized with 'Z' suffix
         AddToCurrentContainer(dt);
     }
 

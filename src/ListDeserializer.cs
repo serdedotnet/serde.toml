@@ -41,6 +41,10 @@ internal sealed class ListDeserializer : ITypeDeserializer
 
     public void SkipValue(ISerdeInfo info, int index)
     {
+        if (_index >= _array.Count)
+        {
+            throw new InvalidOperationException("Index out of range");
+        }
         _index++;
     }
 
