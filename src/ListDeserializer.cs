@@ -31,7 +31,7 @@ internal sealed class ListDeserializer : ITypeDeserializer
     public T ReadValue<T>(ISerdeInfo info, int index, IDeserialize<T> deserialize) where T : class?
     {
         var value = _array[_index++]!;
-        var deserializer = new TomlDeserializer(value);
+        var deserializer = new TomlDeserializer((TomlTable)value);
         return deserialize.Deserialize(deserializer);
     }
 

@@ -53,7 +53,7 @@ internal sealed class DictionaryDeserializer : ITypeDeserializer
             _index++;
         }
 
-        var deserializer = new TomlDeserializer(value);
+        var deserializer = new TomlDeserializer((TomlTable)value);
         return deserialize.Deserialize(deserializer);
     }
 

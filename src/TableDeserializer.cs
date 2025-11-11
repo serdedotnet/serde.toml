@@ -38,7 +38,7 @@ internal sealed class TableDeserializer : ITypeDeserializer
         var fieldName = info.GetFieldStringName(index);
         if (_table.TryGetValue(fieldName, out var value))
         {
-            var fieldDeserializer = new TomlDeserializer(value);
+            var fieldDeserializer = new TomlDeserializer((TomlTable)value);
             var result = deserialize.Deserialize(fieldDeserializer);
             // Mark as read by removing from table (to avoid re-reading)
             _table.Remove(fieldName);
