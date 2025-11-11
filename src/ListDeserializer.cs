@@ -30,10 +30,6 @@ internal sealed class ListDeserializer : ITypeDeserializer
 
     public T ReadValue<T>(ISerdeInfo info, int index, IDeserialize<T> deserialize) where T : class?
     {
-        if (_index >= _array.Count)
-        {
-            throw new InvalidOperationException("Index out of range");
-        }
         var value = _array[_index++]!;
         var deserializer = new TomlDeserializer(value);
         return deserialize.Deserialize(deserializer);
@@ -41,10 +37,6 @@ internal sealed class ListDeserializer : ITypeDeserializer
 
     public void SkipValue(ISerdeInfo info, int index)
     {
-        if (_index >= _array.Count)
-        {
-            throw new InvalidOperationException("Index out of range");
-        }
         _index++;
     }
 
@@ -125,10 +117,6 @@ internal sealed class ListDeserializer : ITypeDeserializer
 
     private object GetNextValue()
     {
-        if (_index >= _array.Count)
-        {
-            throw new InvalidOperationException("Index out of range");
-        }
         return _array[_index++]!;
     }
 }

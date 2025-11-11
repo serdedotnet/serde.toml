@@ -42,20 +42,12 @@ internal sealed class DictionaryDeserializer : ITypeDeserializer
         if (_index % 2 == 0)
         {
             // Reading key
-            if (_tableKeyIndex >= _tableKeys.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
             value = _tableKeys[_tableKeyIndex];
             _index++;
         }
         else
         {
             // Reading value
-            if (_tableKeyIndex >= _tableKeys.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
             value = _table[_tableKeys[_tableKeyIndex]]!;
             _tableKeyIndex++;
             _index++;
@@ -161,10 +153,6 @@ internal sealed class DictionaryDeserializer : ITypeDeserializer
         if (_index % 2 == 0)
         {
             // Reading key
-            if (_tableKeyIndex >= _tableKeys.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
             var key = _tableKeys[_tableKeyIndex];
             _index++;
             return key;
@@ -172,10 +160,6 @@ internal sealed class DictionaryDeserializer : ITypeDeserializer
         else
         {
             // Reading value
-            if (_tableKeyIndex >= _tableKeys.Count)
-            {
-                throw new InvalidOperationException("Index out of range");
-            }
             var value = _table[_tableKeys[_tableKeyIndex]]!;
             _tableKeyIndex++;
             _index++;
