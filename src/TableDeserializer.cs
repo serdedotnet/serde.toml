@@ -59,7 +59,7 @@ internal sealed class TableDeserializer : ITypeDeserializer
         if (_table.TryGetValue(fieldName, out var value))
         {
             _table.Remove(fieldName);
-            return value is bool b ? b : throw TypeMismatchException("bool", value);
+            return value is bool b ? b : throw DeserializerHelpers.TypeMismatchException("bool", value);
         }
         throw new InvalidOperationException($"Field not found: {fieldName}");
     }
@@ -70,7 +70,7 @@ internal sealed class TableDeserializer : ITypeDeserializer
         if (_table.TryGetValue(fieldName, out var value))
         {
             _table.Remove(fieldName);
-            return value is string s && s.Length == 1 ? s[0] : throw TypeMismatchException("single character string", value);
+            return value is string s && s.Length == 1 ? s[0] : throw DeserializerHelpers.TypeMismatchException("single character string", value);
         }
         throw new InvalidOperationException($"Field not found: {fieldName}");
     }
@@ -95,7 +95,7 @@ internal sealed class TableDeserializer : ITypeDeserializer
                 int i => i,
                 short s => s,
                 byte b => b,
-                _ => throw TypeMismatchException("integer", value)
+                _ => throw DeserializerHelpers.TypeMismatchException("integer", value)
             };
         }
         throw new InvalidOperationException($"Field not found: {fieldName}");
@@ -115,7 +115,7 @@ internal sealed class TableDeserializer : ITypeDeserializer
                 float f => f,
                 long l => (double)l,
                 int i => (double)i,
-                _ => throw TypeMismatchException("float", value)
+                _ => throw DeserializerHelpers.TypeMismatchException("float", value)
             };
         }
         throw new InvalidOperationException($"Field not found: {fieldName}");
@@ -129,7 +129,7 @@ internal sealed class TableDeserializer : ITypeDeserializer
         if (_table.TryGetValue(fieldName, out var value))
         {
             _table.Remove(fieldName);
-            return value is string s ? s : throw TypeMismatchException("string", value);
+            return value is string s ? s : throw DeserializerHelpers.TypeMismatchException("string", value);
         }
         throw new InvalidOperationException($"Field not found: {fieldName}");
     }
@@ -145,7 +145,7 @@ internal sealed class TableDeserializer : ITypeDeserializer
                 DateTime dt => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
                 DateTimeOffset dto => dto.UtcDateTime,
                 string s => DateTime.Parse(s, null, System.Globalization.DateTimeStyles.RoundtripKind),
-                _ => throw TypeMismatchException("DateTime", value)
+                _ => throw DeserializerHelpers.TypeMismatchException("DateTime", value)
             };
         }
         throw new InvalidOperationException($"Field not found: {fieldName}");
@@ -156,10 +156,5 @@ internal sealed class TableDeserializer : ITypeDeserializer
         var s = ReadString(info, index);
         var bytes = Convert.FromBase64String(s);
         writer.Write(bytes);
-    }
-
-    private static InvalidOperationException TypeMismatchException(string expectedType, object? actualValue)
-    {
-        return new InvalidOperationException($"Expected {expectedType}, got {actualValue?.GetType()}");
     }
 }

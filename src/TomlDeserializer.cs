@@ -51,7 +51,7 @@ public sealed class TomlDeserializer : IDeserializer
         return _currentValue switch
         {
             bool b => b,
-            _ => throw TypeMismatchException("bool")
+            _ => throw DeserializerHelpers.TypeMismatchException("bool", _currentValue)
         };
     }
 
@@ -60,7 +60,7 @@ public sealed class TomlDeserializer : IDeserializer
         return _currentValue switch
         {
             string s when s.Length == 1 => s[0],
-            _ => throw TypeMismatchException("single character string")
+            _ => throw DeserializerHelpers.TypeMismatchException("single character string", _currentValue)
         };
     }
 
@@ -107,7 +107,7 @@ public sealed class TomlDeserializer : IDeserializer
             int i => i,
             short s => s,
             byte b => b,
-            _ => throw TypeMismatchException("integer")
+            _ => throw DeserializerHelpers.TypeMismatchException("integer", _currentValue)
         };
     }
 
@@ -124,7 +124,7 @@ public sealed class TomlDeserializer : IDeserializer
             float f => f,
             long l => (double)l,
             int i => (double)i,
-            _ => throw TypeMismatchException("float")
+            _ => throw DeserializerHelpers.TypeMismatchException("float", _currentValue)
         };
     }
 
@@ -138,7 +138,7 @@ public sealed class TomlDeserializer : IDeserializer
         return _currentValue switch
         {
             string s => s,
-            _ => throw TypeMismatchException("string")
+            _ => throw DeserializerHelpers.TypeMismatchException("string", _currentValue)
         };
     }
 
@@ -149,7 +149,7 @@ public sealed class TomlDeserializer : IDeserializer
             DateTime dt => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
             DateTimeOffset dto => dto.UtcDateTime,
             string s => DateTime.Parse(s, null, System.Globalization.DateTimeStyles.RoundtripKind),
-            _ => throw TypeMismatchException("DateTime")
+            _ => throw DeserializerHelpers.TypeMismatchException("DateTime", _currentValue)
         };
     }
 
@@ -158,16 +158,6 @@ public sealed class TomlDeserializer : IDeserializer
         var s = ReadString();
         var bytes = Convert.FromBase64String(s);
         writer.Write(bytes);
-    }
-
-    private InvalidOperationException TypeMismatchException(string expectedType)
-    {
-        return new InvalidOperationException($"Expected {expectedType}, got {_currentValue?.GetType()}");
-    }
-
-    private InvalidOperationException TypeMismatchException(string expectedType, object? actualValue)
-    {
-        return new InvalidOperationException($"Expected {expectedType}, got {actualValue?.GetType()}");
     }
 
     public ITypeDeserializer ReadType(ISerdeInfo typeInfo)
