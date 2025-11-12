@@ -12,7 +12,6 @@ internal sealed class DictionaryDeserializer : ITypeDeserializer
     private readonly TomlTable _table;
     private readonly List<string> _tableKeys;
     private int _index;
-    private int _tableKeyIndex;
 
     public int? SizeOpt => _tableKeys.Count;
 
@@ -21,13 +20,12 @@ internal sealed class DictionaryDeserializer : ITypeDeserializer
         _table = table;
         _tableKeys = _table.Keys.ToList();
         _index = 0;
-        _tableKeyIndex = 0;
     }
 
     public int TryReadIndex(ISerdeInfo info, out string? errorName)
     {
         errorName = null;
-        if (_tableKeyIndex < _tableKeys.Count)
+        if (_index / 2 < _tableKeys.Count)
         {
             return _index;
         }
@@ -42,14 +40,13 @@ internal sealed class DictionaryDeserializer : ITypeDeserializer
         if (_index % 2 == 0)
         {
             // Reading key
-            value = _tableKeys[_tableKeyIndex];
+            value = _tableKeys[_index / 2];
             _index++;
         }
         else
         {
             // Reading value
-            value = _table[_tableKeys[_tableKeyIndex]]!;
-            _tableKeyIndex++;
+            value = _table[_tableKeys[_index / 2]]!;
             _index++;
         }
 
@@ -60,10 +57,6 @@ internal sealed class DictionaryDeserializer : ITypeDeserializer
     public void SkipValue(ISerdeInfo info, int index)
     {
         _index++;
-        if (_index % 2 == 0)
-        {
-            _tableKeyIndex++;
-        }
     }
 
     public bool ReadBool(ISerdeInfo info, int index)
@@ -153,15 +146,14 @@ internal sealed class DictionaryDeserializer : ITypeDeserializer
         if (_index % 2 == 0)
         {
             // Reading key
-            var key = _tableKeys[_tableKeyIndex];
+            var key = _tableKeys[_index / 2];
             _index++;
             return key;
         }
         else
         {
             // Reading value
-            var value = _table[_tableKeys[_tableKeyIndex]]!;
-            _tableKeyIndex++;
+            var value = _table[_tableKeys[_index / 2]]!;
             _index++;
             return value;
         }
