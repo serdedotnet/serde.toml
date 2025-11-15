@@ -5,10 +5,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageVersion>0.1.0-preview1</PackageVersion>
+    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Serde" />
+    <PackageReference Include="Tomlyn" />
   </ItemGroup>
 
 </Project>

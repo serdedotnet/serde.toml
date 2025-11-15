@@ -1,6 +1,5 @@
 <Project>
   <PropertyGroup>
     <UseArtifactsOutput>true</UseArtifactsOutput>
-    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
   </PropertyGroup>
 </Project>
