@@ -13,9 +13,9 @@ namespace Serde.Toml;
 /// </summary>
 public sealed class TomlDeserializer : IDeserializer
 {
-    private readonly TomlTable _currentValue;
+    private readonly object _currentValue;
 
-    internal TomlDeserializer(TomlTable value)
+    internal TomlDeserializer(object value)
     {
         _currentValue = value;
     }
@@ -48,93 +48,115 @@ public sealed class TomlDeserializer : IDeserializer
 
     public bool ReadBool()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return _currentValue is bool b ? b : throw DeserializerHelpers.TypeMismatchException("bool", _currentValue);
     }
 
     public char ReadChar()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return _currentValue is string s && s.Length == 1 ? s[0] : throw DeserializerHelpers.TypeMismatchException("single character string", _currentValue);
     }
 
     public byte ReadU8()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return Convert.ToByte(ReadI64());
     }
 
     public ushort ReadU16()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return Convert.ToUInt16(ReadI64());
     }
 
     public uint ReadU32()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return Convert.ToUInt32(ReadI64());
     }
 
     public ulong ReadU64()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return Convert.ToUInt64(ReadI64());
     }
 
     public sbyte ReadI8()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return Convert.ToSByte(ReadI64());
     }
 
     public short ReadI16()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return Convert.ToInt16(ReadI64());
     }
 
     public int ReadI32()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return Convert.ToInt32(ReadI64());
     }
 
     public long ReadI64()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return _currentValue switch
+        {
+            long l => l,
+            int i => i,
+            short s => s,
+            byte b => b,
+            _ => throw DeserializerHelpers.TypeMismatchException("integer", _currentValue)
+        };
     }
 
     public float ReadF32()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return Convert.ToSingle(ReadF64());
     }
 
     public double ReadF64()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return _currentValue switch
+        {
+            double d => d,
+            float f => f,
+            long l => (double)l,
+            int i => (double)i,
+            _ => throw DeserializerHelpers.TypeMismatchException("float", _currentValue)
+        };
     }
 
     public decimal ReadDecimal()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return Convert.ToDecimal(ReadF64());
     }
 
     public string ReadString()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return _currentValue is string s ? s : throw DeserializerHelpers.TypeMismatchException("string", _currentValue);
     }
 
     public DateTime ReadDateTime()
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        return _currentValue switch
+        {
+            DateTime dt => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
+            DateTimeOffset dto => dto.UtcDateTime,
+            string s => DateTime.Parse(s, null, System.Globalization.DateTimeStyles.RoundtripKind),
+            _ => throw DeserializerHelpers.TypeMismatchException("DateTime", _currentValue)
+        };
     }
 
     public void ReadBytes(IBufferWriter<byte> writer)
     {
-        throw new NotSupportedException("TomlDeserializer can only deserialize structured types (tables). Primitive values are handled by TableDeserializer, ListDeserializer, or DictionaryDeserializer.");
+        var s = ReadString();
+        var bytes = Convert.FromBase64String(s);
+        writer.Write(bytes);
     }
 
     public ITypeDeserializer ReadType(ISerdeInfo typeInfo)
     {
         return typeInfo.Kind switch
         {
-            InfoKind.List => throw new InvalidOperationException("Lists should not be read from root TomlDeserializer"),
-            InfoKind.Dictionary => new DictionaryDeserializer(_currentValue),
-            InfoKind.CustomType => new TableDeserializer(_currentValue),
-            InfoKind.Nullable => new TableDeserializer(_currentValue),
-            InfoKind.Enum => new TableDeserializer(_currentValue),
+            InfoKind.List => new ListDeserializer((TomlArray)_currentValue),
+            InfoKind.Dictionary => new DictionaryDeserializer((TomlTable)_currentValue),
+            InfoKind.CustomType => new TableDeserializer((TomlTable)_currentValue),
+            InfoKind.Nullable => new TableDeserializer((TomlTable)_currentValue),
+            InfoKind.Enum => new TableDeserializer((TomlTable)_currentValue),
             _ => throw new ArgumentException($"Unsupported type kind: {typeInfo.Kind}")
         };
     }

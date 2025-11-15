@@ -5,18 +5,12 @@ using Tomlyn.Model;
 
 namespace Serde.Toml;
 
-internal sealed class ListDeserializer : ITypeDeserializer
+internal sealed class ListDeserializer(TomlArray array) : ITypeDeserializer
 {
-    private readonly TomlArray _array;
-    private int _index;
+    private readonly TomlArray _array = array;
+    private int _index = 0;
 
     public int? SizeOpt => _array.Count;
-
-    public ListDeserializer(TomlArray array)
-    {
-        _array = array;
-        _index = 0;
-    }
 
     public int TryReadIndex(ISerdeInfo info, out string? errorName)
     {
@@ -31,14 +25,11 @@ internal sealed class ListDeserializer : ITypeDeserializer
     public T ReadValue<T>(ISerdeInfo info, int index, IDeserialize<T> deserialize) where T : class?
     {
         var value = _array[_index++]!;
-        var deserializer = new TomlDeserializer((TomlTable)value);
+        var deserializer = new TomlDeserializer(value);
         return deserialize.Deserialize(deserializer);
     }
 
-    public void SkipValue(ISerdeInfo info, int index)
-    {
-        _index++;
-    }
+    public void SkipValue(ISerdeInfo info, int index) => _index++;
 
     public bool ReadBool(ISerdeInfo info, int index)
     {
@@ -49,7 +40,7 @@ internal sealed class ListDeserializer : ITypeDeserializer
     public char ReadChar(ISerdeInfo info, int index)
     {
         var value = GetNextValue();
-        return value is string s && s.Length == 1 ? s[0] : throw DeserializerHelpers.TypeMismatchException("single character string", value);
+        return value is string { Length: 1 } s ? s[0] : throw DeserializerHelpers.TypeMismatchException("single character string", value);
     }
 
     public byte ReadU8(ISerdeInfo info, int index) => Convert.ToByte(ReadI64(info, index));
@@ -115,8 +106,5 @@ internal sealed class ListDeserializer : ITypeDeserializer
         writer.Write(bytes);
     }
 
-    private object GetNextValue()
-    {
-        return _array[_index++]!;
-    }
+    private object GetNextValue() => _array[_index++]!;
 }
