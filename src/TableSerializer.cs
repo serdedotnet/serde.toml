@@ -1,229 +1,107 @@
-using System;
-using System.Buffers;
 using Serde;
 using Tomlyn.Model;
 
 namespace Serde.Toml;
 
-/// <summary>
-/// Implements ISerializer and ITypeSerializer for TOML tables (custom types).
-/// </summary>
-internal sealed class TableSerializer : ISerializer, ITypeSerializer
+internal sealed class TableSerializer(TomlTable table) : ITypeSerializer
 {
-    private readonly TomlTable _table;
-    private readonly Action? _onEnd;
+    public ISerializer WriteFieldStart(ISerdeInfo typeInfo, int index) =>
+        CreateFieldSerializer(typeInfo, index);
 
-    internal TableSerializer(TomlTable table, Action? _onEnd = null)
-    {
-        _table = table;
-        this._onEnd = _onEnd;
-    }
+    public void WriteFieldEnd(ISerdeInfo typeInfo, int index, ISerializer serializer) { }
 
-    public void End(ISerdeInfo info)
-    {
-        _onEnd?.Invoke();
-    }
+    public void End(ISerdeInfo info) { }
 
-    // ISerializer implementation - these throw since TableSerializer writes to tables, not arrays
-    void ISerializer.WriteBool(bool b)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void SkipValue(ISerdeInfo typeInfo, int index) { }
 
-    void ISerializer.WriteChar(char c)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteBool(ISerdeInfo typeInfo, int index, bool value) =>
+        Set(typeInfo, index, value);
 
-    void ISerializer.WriteU8(byte b)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteChar(ISerdeInfo typeInfo, int index, char value) =>
+        Set(typeInfo, index, value.ToString());
 
-    void ISerializer.WriteU16(ushort u16)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteU8(ISerdeInfo typeInfo, int index, byte value) =>
+        Set(typeInfo, index, (long)value);
 
-    void ISerializer.WriteU32(uint u32)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteU16(ISerdeInfo typeInfo, int index, ushort value) =>
+        Set(typeInfo, index, (long)value);
 
-    void ISerializer.WriteU64(ulong u64)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteU32(ISerdeInfo typeInfo, int index, uint value) =>
+        Set(typeInfo, index, (long)value);
 
-    void ISerializer.WriteI8(sbyte b)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteU64(ISerdeInfo typeInfo, int index, ulong value) =>
+        Set(typeInfo, index, TomlValues.ToInteger(value));
 
-    void ISerializer.WriteI16(short i16)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteU128(ISerdeInfo typeInfo, int index, UInt128 value) =>
+        Set(typeInfo, index, TomlValues.ToInteger(value));
 
-    void ISerializer.WriteI32(int i32)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteI8(ISerdeInfo typeInfo, int index, sbyte value) =>
+        Set(typeInfo, index, (long)value);
 
-    void ISerializer.WriteI64(long i64)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteI16(ISerdeInfo typeInfo, int index, short value) =>
+        Set(typeInfo, index, (long)value);
 
-    void ISerializer.WriteF32(float f)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteI32(ISerdeInfo typeInfo, int index, int value) =>
+        Set(typeInfo, index, (long)value);
 
-    void ISerializer.WriteF64(double d)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteI64(ISerdeInfo typeInfo, int index, long value) => Set(typeInfo, index, value);
 
-    void ISerializer.WriteDecimal(decimal d)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteI128(ISerdeInfo typeInfo, int index, Int128 value) =>
+        Set(typeInfo, index, TomlValues.ToInteger(value));
 
-    void ISerializer.WriteString(string s)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteF32(ISerdeInfo typeInfo, int index, float value) =>
+        Set(typeInfo, index, (double)value);
 
-    void ISerializer.WriteNull()
-    {
-        throw new NotSupportedException("TOML does not support null values");
-    }
+    public void WriteF64(ISerdeInfo typeInfo, int index, double value) =>
+        Set(typeInfo, index, value);
 
-    void ISerializer.WriteDateTime(DateTime dt)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteDecimal(ISerdeInfo typeInfo, int index, decimal value) =>
+        Set(typeInfo, index, TomlValues.ToFloat(value));
 
-    void ISerializer.WriteDateTimeOffset(DateTimeOffset dt)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteString(ISerdeInfo typeInfo, int index, string value) =>
+        Set(typeInfo, index, value);
 
-    void ISerializer.WriteBytes(ReadOnlyMemory<byte> bytes)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteNull(ISerdeInfo typeInfo, int index) { }
 
-    ITypeSerializer ISerializer.WriteCollection(ISerdeInfo info, int? size)
-    {
-        throw new NotSupportedException("TableSerializer writes to tables. Use ITypeSerializer methods with field info.");
-    }
+    public void WriteDateTime(ISerdeInfo typeInfo, int index, DateTime value) =>
+        Set(typeInfo, index, TomlValues.ToDateTime(value));
 
-    ITypeSerializer ISerializer.WriteType(ISerdeInfo typeInfo)
-    {
-        // When called as ISerializer.WriteType, we're already in the right context
-        return this;
-    }
+    public void WriteDateTimeOffset(ISerdeInfo typeInfo, int index, DateTimeOffset value) =>
+        Set(typeInfo, index, TomlValues.ToDateTimeOffset(value));
 
-    // ITypeSerializer implementation
-    public void WriteBool(ISerdeInfo typeInfo, int index, bool b)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = b;
-    }
+    public void WriteDateOnly(ISerdeInfo typeInfo, int index, DateOnly value) =>
+        Set(typeInfo, index, TomlValues.ToDateOnly(value));
 
-    public void WriteChar(ISerdeInfo typeInfo, int index, char c)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = c.ToString();
-    }
+    public void WriteTimeOnly(ISerdeInfo typeInfo, int index, TimeOnly value) =>
+        Set(typeInfo, index, TomlValues.ToTimeOnly(value));
 
-    public void WriteU8(ISerdeInfo typeInfo, int index, byte b)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = (long)b;
-    }
+    public void WriteBytes(ISerdeInfo typeInfo, int index, ReadOnlyMemory<byte> value) =>
+        Set(typeInfo, index, Convert.ToBase64String(value.Span));
 
-    public void WriteU16(ISerdeInfo typeInfo, int index, ushort u16)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = (long)u16;
-    }
+    public void WriteEnum(
+        ISerdeInfo typeInfo,
+        int index,
+        ISerdeInfo fieldInfo,
+        int ordinal
+    ) => Set(typeInfo, index, TomlValues.GetEnumName(fieldInfo, ordinal));
 
-    public void WriteU32(ISerdeInfo typeInfo, int index, uint u32)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = (long)u32;
-    }
+    public void WriteValue<T>(
+        ISerdeInfo typeInfo,
+        int index,
+        T value,
+        ISerialize<T> serialize
+    )
+        where T : class? => serialize.Serialize(value, CreateFieldSerializer(typeInfo, index));
 
-    public void WriteU64(ISerdeInfo typeInfo, int index, ulong u64)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = (long)u64;
-    }
-
-    public void WriteI8(ISerdeInfo typeInfo, int index, sbyte b)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = (long)b;
-    }
-
-    public void WriteI16(ISerdeInfo typeInfo, int index, short i16)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = (long)i16;
-    }
-
-    public void WriteI32(ISerdeInfo typeInfo, int index, int i32)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = (long)i32;
-    }
-
-    public void WriteI64(ISerdeInfo typeInfo, int index, long i64)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = i64;
-    }
-
-    public void WriteF32(ISerdeInfo typeInfo, int index, float f)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = (double)f;
-    }
-
-    public void WriteF64(ISerdeInfo typeInfo, int index, double d)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = d;
-    }
-
-    public void WriteDecimal(ISerdeInfo typeInfo, int index, decimal d)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = (double)d;
-    }
-
-    public void WriteString(ISerdeInfo typeInfo, int index, string s)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = s;
-    }
-
-    public void WriteNull(ISerdeInfo typeInfo, int index)
-    {
-        // TOML doesn't have null values, skip
-    }
-
-    public void WriteDateTime(ISerdeInfo typeInfo, int index, DateTime dt)
-    {
-        // TOML supports both UTC and local datetime formats
-        _table[typeInfo.GetFieldStringName(index)] = dt;
-    }
-
-    public void WriteDateTimeOffset(ISerdeInfo typeInfo, int index, DateTimeOffset dt)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = dt;
-    }
-
-    public void WriteBytes(ISerdeInfo typeInfo, int index, ReadOnlyMemory<byte> bytes)
-    {
-        _table[typeInfo.GetFieldStringName(index)] = Convert.ToBase64String(bytes.Span);
-    }
-
-    public void WriteValue<T>(ISerdeInfo typeInfo, int index, T value, ISerialize<T> serialize) where T : class?
+    private TomlValueSerializer CreateFieldSerializer(ISerdeInfo typeInfo, int index)
     {
         var fieldName = typeInfo.GetFieldStringName(index);
-        
-        // Create a field serializer to handle the value
-        var fieldSerializer = new FieldSerializer(_table, fieldName);
-        serialize.Serialize(value, fieldSerializer);
+        return new TomlValueSerializer(
+            value => table[fieldName] = value,
+            () => table.Remove(fieldName)
+        );
     }
+
+    private void Set(ISerdeInfo typeInfo, int index, object value) =>
+        table[typeInfo.GetFieldStringName(index)] = value;
 }

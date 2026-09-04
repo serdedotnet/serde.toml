@@ -1,16 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <PackageVersion>0.1.0-preview1</PackageVersion>
     <IsAotCompatible>true</IsAotCompatible>
+    <Description>TOML serialization and deserialization for .NET, built on the Serde framework.</Description>
+    <Authors>serdedotnet</Authors>
+    <PackageProjectUrl>https://github.com/serdedotnet/serde.toml</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/serdedotnet/serde.toml</RepositoryUrl>
+    <PackageTags>toml;serde;serialization</PackageTags>
+    <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Serde" />
     <PackageReference Include="Tomlyn" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
