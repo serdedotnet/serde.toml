@@ -1,190 +1,91 @@
-using System;
-using System.Buffers;
 using Serde;
 using Tomlyn.Model;
 
 namespace Serde.Toml;
 
 /// <summary>
-/// Implements ISerializer for TOML format using Tomlyn library.
+/// Serializes Serde values as TOML documents.
 /// </summary>
 public sealed class TomlSerializer : ISerializer
 {
     private readonly TomlTable _rootTable;
-    private readonly TomlArray? _currentArray;
 
-    private TomlSerializer(TomlTable rootTable, TomlArray? currentArray = null)
+    private TomlSerializer(TomlTable rootTable)
     {
         _rootTable = rootTable;
-        _currentArray = currentArray;
     }
 
     /// <summary>
-    /// Serialize the given type to a TOML string.
+    /// Serializes the given value to a TOML string.
     /// </summary>
-    public static string Serialize<T>(T value, ISerialize<T> ser)
+    public static string Serialize<T>(T value, ISerialize<T> serialize)
     {
         var rootTable = new TomlTable();
-        var serializer = new TomlSerializer(rootTable);
-        ser.Serialize(value, serializer);
-        return Tomlyn.Toml.FromModel(rootTable);
+        serialize.Serialize(value, new TomlSerializer(rootTable));
+        return global::Tomlyn.TomlSerializer.Serialize(
+            rootTable,
+            TomlynModelContext.Instance.TableInfo
+        );
     }
 
-    public static string Serialize<T, TProvider>(T value) where TProvider : ISerializeProvider<T>
-    {
-        return Serialize(value, TProvider.Instance);
-    }
+    public static string Serialize<T, TProvider>(T value)
+        where TProvider : ISerializeProvider<T> => Serialize(value, TProvider.Instance);
 
-    public static string Serialize<T>(T value) where T : ISerializeProvider<T>
-    {
-        return Serialize(value, T.Instance);
-    }
-
-    public void WriteBool(bool b)
-    {
-        AddToCurrentArray(b);
-    }
-
-    public void WriteChar(char c)
-    {
-        AddToCurrentArray(c.ToString());
-    }
-
-    public void WriteU8(byte b)
-    {
-        AddToCurrentArray((long)b);
-    }
-
-    public void WriteU16(ushort u16)
-    {
-        AddToCurrentArray((long)u16);
-    }
-
-    public void WriteU32(uint u32)
-    {
-        AddToCurrentArray((long)u32);
-    }
-
-    public void WriteU64(ulong u64)
-    {
-        AddToCurrentArray((long)u64);
-    }
-
-    public void WriteI8(sbyte b)
-    {
-        AddToCurrentArray((long)b);
-    }
-
-    public void WriteI16(short i16)
-    {
-        AddToCurrentArray((long)i16);
-    }
-
-    public void WriteI32(int i32)
-    {
-        AddToCurrentArray((long)i32);
-    }
-
-    public void WriteI64(long i64)
-    {
-        AddToCurrentArray(i64);
-    }
-
-    public void WriteF32(float f)
-    {
-        AddToCurrentArray((double)f);
-    }
-
-    public void WriteF64(double d)
-    {
-        AddToCurrentArray(d);
-    }
-
-    public void WriteDecimal(decimal d)
-    {
-        AddToCurrentArray((double)d);
-    }
-
-    public void WriteString(string s)
-    {
-        AddToCurrentArray(s);
-    }
-
-    public void WriteNull()
-    {
-        throw new NotSupportedException("TOML does not support null values");
-    }
-
-    public void WriteDateTime(DateTime dt)
-    {
-        // TOML supports both UTC and local datetime formats
-        AddToCurrentArray(dt);
-    }
-
-    public void WriteDateTimeOffset(DateTimeOffset dt)
-    {
-        AddToCurrentArray(dt);
-    }
-
-    public void WriteBytes(ReadOnlyMemory<byte> bytes)
-    {
-        // TOML doesn't have native byte array support, convert to base64 string
-        AddToCurrentArray(Convert.ToBase64String(bytes.Span));
-    }
+    public static string Serialize<T>(T value)
+        where T : ISerializeProvider<T> => Serialize(value, T.Instance);
 
     public ITypeSerializer WriteCollection(ISerdeInfo info, int? size)
     {
-        switch (info.Kind)
+        if (info.Kind != InfoKind.Dictionary)
         {
-            case InfoKind.Dictionary:
-                var table = new TomlTable();
-                AddToCurrentArray(table);
-                return new DictionarySerializer(table);
-            case InfoKind.List:
-                var array = new TomlArray();
-                AddToCurrentArray(array);
-                return new ArraySerializer(array);
-            default:
-                throw new ArgumentException($"TypeKind is {info.Kind}, expected List or Dictionary");
+            throw RootValueNotSupported(info.Kind);
         }
+
+        return new DictionarySerializer(_rootTable);
     }
 
-    public ITypeSerializer WriteType(ISerdeInfo typeInfo)
+    public ITypeSerializer WriteType(ISerdeInfo info)
     {
-        switch (typeInfo.Kind)
+        return info.Kind switch
         {
-            case InfoKind.Enum:
-                return new EnumSerializer(value => AddToCurrentArray(value));
-            case InfoKind.CustomType:
-            case InfoKind.Nullable:
-                // For root-level types, write to the root table
-                // For nested types in arrays, create a new table and add to array
-                if (_currentArray == null)
-                {
-                    // Root level - write directly to _rootTable
-                    return new TableSerializer(_rootTable);
-                }
-                else
-                {
-                    // Nested in array - create new table
-                    var nestedTable = new TomlTable();
-                    _currentArray.Add(nestedTable);
-                    return new TableSerializer(nestedTable);
-                }
-            default:
-                throw new ArgumentException($"Unsupported type kind: {typeInfo.Kind}");
-        }
+            InfoKind.CustomType or InfoKind.Union => new TableSerializer(_rootTable),
+            _ => throw RootValueNotSupported(info.Kind),
+        };
     }
 
-    private void AddToCurrentArray(object value)
-    {
-        if (_currentArray != null)
-        {
-            _currentArray.Add(value);
-        }
-        else
-        {
-            throw new InvalidOperationException("TomlSerializer primitive write methods can only be called when writing to arrays.");
-        }
-    }
+    public ITypeSerializer WriteType(ISerdeInfo info, int fieldCount) => WriteType(info);
+
+    public void WriteBool(bool value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteChar(char value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteU8(byte value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteU16(ushort value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteU32(uint value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteU64(ulong value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteU128(UInt128 value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteI8(sbyte value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteI16(short value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteI32(int value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteI64(long value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteI128(Int128 value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteF32(float value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteF64(double value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteDecimal(decimal value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteString(string value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteNull() => throw RootValueNotSupported(InfoKind.Nullable);
+    public void WriteDateTime(DateTime value) => throw RootValueNotSupported(InfoKind.Primitive);
+
+    public void WriteDateTimeOffset(DateTimeOffset value) =>
+        throw RootValueNotSupported(InfoKind.Primitive);
+
+    public void WriteDateOnly(DateOnly value) => throw RootValueNotSupported(InfoKind.Primitive);
+    public void WriteTimeOnly(TimeOnly value) => throw RootValueNotSupported(InfoKind.Primitive);
+
+    public void WriteBytes(ReadOnlyMemory<byte> value) =>
+        throw RootValueNotSupported(InfoKind.Primitive);
+
+    public void WriteEnum(ISerdeInfo info, int ordinal) =>
+        throw RootValueNotSupported(InfoKind.Enum);
+
+    private static NotSupportedException RootValueNotSupported(InfoKind kind) =>
+        new($"TOML documents must have a table at the root; cannot serialize {kind} as a document.");
 }
