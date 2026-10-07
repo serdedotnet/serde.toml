@@ -93,6 +93,15 @@ public partial class ParityTests
     [GenerateSerde]
     private partial record NullableArrayRecord(string?[] Values);
 
+    [GenerateSerde]
+    private partial record NamedTables(Dictionary<string, Dictionary<string, string>> Values);
+
+    [GenerateSerde]
+    private partial record FloatRecord(double Finite, double NegativeZero, double PositiveInfinity, double NegativeInfinity, double NaN);
+
+    [GenerateSerde]
+    private partial record NestedArraysRecord(Child[][] Groups);
+
     [Fact]
     public void PrimitiveMembersRoundTrip()
     {
@@ -143,6 +152,90 @@ public partial class ParityTests
         Assert.Equal(expected.Scores["second"], actual.Scores["second"]);
         Assert.Equal(expected.Children, actual.Children);
         Assert.Equal(expected.Pair, actual.Pair);
+    }
+
+    [Fact]
+    public void TablePathsAndKeysAreQuotedIndependently()
+    {
+        var expected = new NamedTables(new Dictionary<string, Dictionary<string, string>>
+        {
+            ["a.b"] = new() { ["key with spaces"] = "quote \" and \\ slash\n" },
+            ["empty"] = new(),
+            [""] = new() { ["#"] = "value" },
+        });
+
+        var toml = TomlSerializer.Serialize(expected);
+        var actual = TomlDeserializer.Deserialize<NamedTables>(toml);
+
+        Assert.Contains("[values.\"a.b\"]", toml);
+        Assert.Contains("[values.\"\"]", toml);
+        Assert.Equal(expected.Values["a.b"]["key with spaces"], actual.Values["a.b"]["key with spaces"]);
+        Assert.Empty(actual.Values["empty"]);
+        Assert.Equal("value", actual.Values[""]["#"]);
+    }
+
+    [Fact]
+    public void ArraysOfTablesAndFollowingFieldsRoundTrip()
+    {
+        var expected = new CollectionsRecord(
+            [1, 2],
+            ["a"],
+            new() { ["quoted.key"] = [3] },
+            [new Child("first", 1), new Child("second", 2)],
+            (7, "after")
+        );
+
+        var toml = TomlSerializer.Serialize(expected);
+        var actual = TomlDeserializer.Deserialize<CollectionsRecord>(toml);
+
+        Assert.Contains("[[children]]", toml);
+        Assert.Contains("[scores]", toml);
+        Assert.Equal(expected.Children, actual.Children);
+        Assert.Equal(expected.Pair, actual.Pair);
+        Assert.Equal(expected.Scores["quoted.key"], actual.Scores["quoted.key"]);
+    }
+
+    [Fact]
+    public void FloatingPointSpecialValuesRemainFloats()
+    {
+        var expected = new FloatRecord(1, -0.0, double.PositiveInfinity, double.NegativeInfinity, double.NaN);
+
+        var toml = TomlSerializer.Serialize(expected);
+        var actual = TomlDeserializer.Deserialize<FloatRecord>(toml);
+
+        Assert.Contains("finite = 1.0", toml);
+        Assert.Contains("negativeZero = -0.0", toml);
+        Assert.Contains("positiveInfinity = inf", toml);
+        Assert.Contains("negativeInfinity = -inf", toml);
+        Assert.Contains("naN = nan", toml);
+        Assert.Equal(1, actual.Finite);
+        Assert.True(double.IsNegative(actual.NegativeZero));
+        Assert.Equal(expected.PositiveInfinity, actual.PositiveInfinity);
+        Assert.Equal(expected.NegativeInfinity, actual.NegativeInfinity);
+        Assert.True(double.IsNaN(actual.NaN));
+    }
+
+    [Fact]
+    public void TablesInsideNestedArraysUseInlineSyntax()
+    {
+        var expected = new NestedArraysRecord(
+            [[new Child("one", 1), new Child("two", 2)], []]
+        );
+
+        var toml = TomlSerializer.Serialize(expected);
+        var actual = TomlDeserializer.Deserialize<NestedArraysRecord>(toml);
+
+        Assert.Contains("groups = [[{name = \"one\", value = 1}", toml);
+        Assert.Equal(expected.Groups[0], actual.Groups[0]);
+        Assert.Empty(actual.Groups[1]);
+    }
+
+    [Fact]
+    public void InvalidUnicodeCannotBeSerialized()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            TomlSerializer.Serialize(new Child("\ud800", 1))
+        );
     }
 
     [Fact]

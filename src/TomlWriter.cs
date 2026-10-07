@@ -7,7 +7,7 @@ internal sealed class TomlTableValue : Dictionary<string, object>;
 
 internal sealed class TomlArrayValue : List<object>;
 
-internal enum TomlDateTimeKind
+internal enum TomlValueDateTimeKind
 {
     OffsetDateTimeByZ,
     OffsetDateTimeByNumber,
@@ -16,7 +16,7 @@ internal enum TomlDateTimeKind
     LocalTime,
 }
 
-internal readonly record struct TomlDateTimeValue(object Value, int Precision, TomlDateTimeKind Kind);
+internal readonly record struct TomlDateTimeValue(object Value, int Precision, TomlValueDateTimeKind Kind);
 
 internal static class TomlWriter
 {
@@ -176,10 +176,10 @@ internal static class TomlWriter
     {
         switch (value.Kind)
         {
-            case TomlDateTimeKind.LocalDate:
+            case TomlValueDateTimeKind.LocalDate:
                 builder.Append(((DateOnly)value.Value).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
                 return;
-            case TomlDateTimeKind.LocalTime:
+            case TomlValueDateTimeKind.LocalTime:
                 var time = (TimeOnly)value.Value;
                 builder.Append(time.ToString("HH:mm:ss", CultureInfo.InvariantCulture));
                 WriteFraction(builder, time.Ticks, value.Precision);
@@ -191,10 +191,10 @@ internal static class TomlWriter
         WriteFraction(builder, date.Ticks, value.Precision);
         switch (value.Kind)
         {
-            case TomlDateTimeKind.OffsetDateTimeByZ:
+            case TomlValueDateTimeKind.OffsetDateTimeByZ:
                 builder.Append('Z');
                 break;
-            case TomlDateTimeKind.OffsetDateTimeByNumber:
+            case TomlValueDateTimeKind.OffsetDateTimeByNumber:
                 var zone = value.Value is DateTimeOffset dto ? dto.Offset : TimeZoneInfo.Local.GetUtcOffset(date);
                 builder.Append(zone < TimeSpan.Zero ? '-' : '+');
                 builder.Append(zone.Duration().ToString(@"hh\:mm", CultureInfo.InvariantCulture));

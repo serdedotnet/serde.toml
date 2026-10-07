@@ -1,7 +1,8 @@
 # Serde.Toml
 
 A [TOML](https://toml.io/) serializer and deserializer for .NET, built on the
-[Serde](https://github.com/serdedotnet/serde) serialization framework and
+[Serde](https://github.com/serdedotnet/serde) serialization framework.
+Serialization writes TOML directly; deserialization currently uses
 [Tomlyn](https://github.com/xoofx/Tomlyn).
 
 Serde.Toml is an AOT-compatible serializer/deserializer library for .NET 10+

@@ -82,9 +82,9 @@ internal static class TomlValues
         var precision = GetSecondPrecision(value.Ticks);
         return value.Kind switch
         {
-            DateTimeKind.Utc => new(value, precision, TomlDateTimeKind.OffsetDateTimeByZ),
-            DateTimeKind.Local => new(value, precision, TomlDateTimeKind.OffsetDateTimeByNumber),
-            _ => new(value, precision, TomlDateTimeKind.LocalDateTime),
+            DateTimeKind.Utc => new(value, precision, TomlValueDateTimeKind.OffsetDateTimeByZ),
+            DateTimeKind.Local => new(value, precision, TomlValueDateTimeKind.OffsetDateTimeByNumber),
+            _ => new(value, precision, TomlValueDateTimeKind.LocalDateTime),
         };
     }
 
@@ -93,15 +93,15 @@ internal static class TomlValues
             value,
             GetSecondPrecision(value.Ticks),
             value.Offset == TimeSpan.Zero
-                ? TomlDateTimeKind.OffsetDateTimeByZ
-                : TomlDateTimeKind.OffsetDateTimeByNumber
+                ? TomlValueDateTimeKind.OffsetDateTimeByZ
+                : TomlValueDateTimeKind.OffsetDateTimeByNumber
         );
 
     public static TomlDateTimeValue ToDateOnly(DateOnly value) =>
-        new(value, TomlDateTimeKind.LocalDate);
+        new(value, 0, TomlValueDateTimeKind.LocalDate);
 
     public static TomlDateTimeValue ToTimeOnly(TimeOnly value) =>
-        new(value, GetSecondPrecision(value.Ticks), TomlDateTimeKind.LocalTime);
+        new(value, GetSecondPrecision(value.Ticks), TomlValueDateTimeKind.LocalTime);
 
     private static int GetSecondPrecision(long ticks)
     {
