@@ -1,5 +1,4 @@
 using Serde;
-using Tomlyn.Model;
 
 namespace Serde.Toml;
 
@@ -8,9 +7,9 @@ namespace Serde.Toml;
 /// </summary>
 public sealed class TomlSerializer : ISerializer
 {
-    private readonly TomlTable _rootTable;
+    private readonly TomlTableValue _rootTable;
 
-    private TomlSerializer(TomlTable rootTable)
+    private TomlSerializer(TomlTableValue rootTable)
     {
         _rootTable = rootTable;
     }
@@ -20,12 +19,9 @@ public sealed class TomlSerializer : ISerializer
     /// </summary>
     public static string Serialize<T>(T value, ISerialize<T> serialize)
     {
-        var rootTable = new TomlTable();
+        var rootTable = new TomlTableValue();
         serialize.Serialize(value, new TomlSerializer(rootTable));
-        return global::Tomlyn.TomlSerializer.Serialize(
-            rootTable,
-            TomlynModelContext.Instance.TableInfo
-        );
+        return TomlWriter.Write(rootTable);
     }
 
     public static string Serialize<T, TProvider>(T value)

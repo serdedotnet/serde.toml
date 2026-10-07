@@ -1,9 +1,8 @@
 using Serde;
-using Tomlyn.Model;
 
 namespace Serde.Toml;
 
-internal sealed class TableSerializer(TomlTable table) : ITypeSerializer
+internal sealed class TableSerializer(TomlTableValue table) : ITypeSerializer
 {
     public ISerializer WriteFieldStart(ISerdeInfo typeInfo, int index) =>
         CreateFieldSerializer(typeInfo, index);
