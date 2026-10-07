@@ -7,9 +7,9 @@ namespace Serde.Toml;
 /// </summary>
 public sealed class TomlSerializer : ISerializer
 {
-    private readonly TomlTableValue _rootTable;
+    private readonly TomlValue.Table _rootTable;
 
-    private TomlSerializer(TomlTableValue rootTable)
+    private TomlSerializer(TomlValue.Table rootTable)
     {
         _rootTable = rootTable;
     }
@@ -19,7 +19,7 @@ public sealed class TomlSerializer : ISerializer
     /// </summary>
     public static string Serialize<T>(T value, ISerialize<T> serialize)
     {
-        var rootTable = new TomlTableValue();
+        var rootTable = new TomlValue.Table();
         serialize.Serialize(value, new TomlSerializer(rootTable));
         return TomlWriter.Write(rootTable);
     }

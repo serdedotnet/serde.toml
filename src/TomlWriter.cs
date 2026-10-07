@@ -3,35 +3,20 @@ using System.Text;
 
 namespace Serde.Toml;
 
-internal sealed class TomlTableValue : Dictionary<string, object>;
-
-internal sealed class TomlArrayValue : List<object>;
-
-internal enum TomlValueDateTimeKind
-{
-    OffsetDateTimeByZ,
-    OffsetDateTimeByNumber,
-    LocalDateTime,
-    LocalDate,
-    LocalTime,
-}
-
-internal readonly record struct TomlDateTimeValue(object Value, int Precision, TomlValueDateTimeKind Kind);
-
 internal static class TomlWriter
 {
-    public static string Write(TomlTableValue table)
+    public static string Write(TomlValue.Table table)
     {
         var builder = new StringBuilder();
         WriteTable(builder, table, "");
         return builder.ToString();
     }
 
-    private static void WriteTable(StringBuilder builder, TomlTableValue table, string path)
+    private static void WriteTable(StringBuilder builder, TomlValue.Table table, string path)
     {
         foreach (var (key, value) in table)
         {
-            if (value is TomlTableValue || IsTableArray(value))
+            if (value is TomlValue.Table || IsTableArray(value))
             {
                 continue;
             }
@@ -46,17 +31,17 @@ internal static class TomlWriter
         {
             var name = FormatKey(key);
             var childPath = path.Length == 0 ? name : path + "." + name;
-            if (value is TomlTableValue child)
+            if (value is TomlValue.Table child)
             {
                 WriteHeader(builder, childPath, false);
                 WriteTable(builder, child, childPath);
             }
-            else if (value is TomlArrayValue array && IsTableArray(array))
+            else if (value is TomlValue.Array array && IsTableArray(array))
             {
                 foreach (var element in array)
                 {
                     WriteHeader(builder, childPath, true);
-                    WriteTable(builder, (TomlTableValue)element, childPath);
+                    WriteTable(builder, (TomlValue.Table)element, childPath);
                 }
             }
         }
@@ -74,8 +59,8 @@ internal static class TomlWriter
         builder.Append(array ? "]]\n" : "]\n");
     }
 
-    private static bool IsTableArray(object value) =>
-        value is TomlArrayValue { Count: > 0 } array && array.All(item => item is TomlTableValue);
+    private static bool IsTableArray(TomlValue value) =>
+        value is TomlValue.Array { Count: > 0 } array && array.All(item => item is TomlValue.Table);
 
     private static string FormatKey(string key)
     {
@@ -95,26 +80,36 @@ internal static class TomlWriter
     private static bool IsBareKeyChar(char c) =>
         c is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '_' or '-';
 
-    private static void WriteValue(StringBuilder builder, object value)
+    private static void WriteValue(StringBuilder builder, TomlValue value)
     {
         switch (value)
         {
-            case string text:
-                WriteString(builder, text);
+            case TomlValue.String text:
+                WriteString(builder, text.Value);
                 break;
-            case bool boolean:
-                builder.Append(boolean ? "true" : "false");
+            case TomlValue.Boolean boolean:
+                builder.Append(boolean.Value ? "true" : "false");
                 break;
-            case long integer:
-                builder.Append(integer.ToString(CultureInfo.InvariantCulture));
+            case TomlValue.Integer integer:
+                builder.Append(integer.Value.ToString(CultureInfo.InvariantCulture));
                 break;
-            case double number:
-                WriteFloat(builder, number);
+            case TomlValue.Float number:
+                WriteFloat(builder, number.Value);
                 break;
-            case TomlDateTimeValue dateTime:
-                WriteDateTime(builder, dateTime);
+            case TomlValue.DateTime dateTime:
+                WriteDateTime(builder, dateTime.Value);
                 break;
-            case TomlArrayValue array:
+            case TomlValue.DateTimeOffset dateTimeOffset:
+                WriteDateTimeOffset(builder, dateTimeOffset.Value);
+                break;
+            case TomlValue.Date date:
+                builder.Append(date.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                break;
+            case TomlValue.Time time:
+                builder.Append(time.Value.ToString("HH:mm:ss", CultureInfo.InvariantCulture));
+                WriteFraction(builder, time.Value.Ticks);
+                break;
+            case TomlValue.Array array:
                 builder.Append('[');
                 for (var i = 0; i < array.Count; i++)
                 {
@@ -126,7 +121,7 @@ internal static class TomlWriter
                 }
                 builder.Append(']');
                 break;
-            case TomlTableValue table:
+            case TomlValue.Table table:
                 builder.Append('{');
                 var first = true;
                 foreach (var (key, item) in table)
@@ -142,8 +137,6 @@ internal static class TomlWriter
                 }
                 builder.Append('}');
                 break;
-            default:
-                throw new NotSupportedException($"Unsupported TOML value: {value.GetType().Name}.");
         }
     }
 
@@ -172,42 +165,48 @@ internal static class TomlWriter
         }
     }
 
-    private static void WriteDateTime(StringBuilder builder, TomlDateTimeValue value)
+    private static void WriteDateTime(StringBuilder builder, DateTime value)
     {
+        builder.Append(value.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture));
+        WriteFraction(builder, value.Ticks);
         switch (value.Kind)
         {
-            case TomlValueDateTimeKind.LocalDate:
-                builder.Append(((DateOnly)value.Value).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-                return;
-            case TomlValueDateTimeKind.LocalTime:
-                var time = (TimeOnly)value.Value;
-                builder.Append(time.ToString("HH:mm:ss", CultureInfo.InvariantCulture));
-                WriteFraction(builder, time.Ticks, value.Precision);
-                return;
-        }
-
-        var date = value.Value is DateTimeOffset offset ? offset.DateTime : (DateTime)value.Value;
-        builder.Append(date.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture));
-        WriteFraction(builder, date.Ticks, value.Precision);
-        switch (value.Kind)
-        {
-            case TomlValueDateTimeKind.OffsetDateTimeByZ:
+            case DateTimeKind.Utc:
                 builder.Append('Z');
                 break;
-            case TomlValueDateTimeKind.OffsetDateTimeByNumber:
-                var zone = value.Value is DateTimeOffset dto ? dto.Offset : TimeZoneInfo.Local.GetUtcOffset(date);
-                builder.Append(zone < TimeSpan.Zero ? '-' : '+');
-                builder.Append(zone.Duration().ToString(@"hh\:mm", CultureInfo.InvariantCulture));
+            case DateTimeKind.Local:
+                WriteOffset(builder, TimeZoneInfo.Local.GetUtcOffset(value));
                 break;
         }
     }
 
-    private static void WriteFraction(StringBuilder builder, long ticks, int precision)
+    private static void WriteDateTimeOffset(StringBuilder builder, DateTimeOffset value)
     {
-        if (precision > 0)
+        builder.Append(value.ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture));
+        WriteFraction(builder, value.Ticks);
+        if (value.Offset == TimeSpan.Zero)
+        {
+            builder.Append('Z');
+        }
+        else
+        {
+            WriteOffset(builder, value.Offset);
+        }
+    }
+
+    private static void WriteOffset(StringBuilder builder, TimeSpan offset)
+    {
+        builder.Append(offset < TimeSpan.Zero ? '-' : '+');
+        builder.Append(offset.Duration().ToString(@"hh\:mm", CultureInfo.InvariantCulture));
+    }
+
+    private static void WriteFraction(StringBuilder builder, long ticks)
+    {
+        var fractionalTicks = ticks % TimeSpan.TicksPerSecond;
+        if (fractionalTicks != 0)
         {
             builder.Append('.');
-            builder.Append((ticks % TimeSpan.TicksPerSecond).ToString("D7", CultureInfo.InvariantCulture).AsSpan(0, precision));
+            builder.Append(fractionalTicks.ToString("D7", CultureInfo.InvariantCulture).TrimEnd('0'));
         }
     }
 
