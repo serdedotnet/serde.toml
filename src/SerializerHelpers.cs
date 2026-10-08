@@ -1,6 +1,4 @@
 using Serde;
-using Tomlyn;
-using Tomlyn.Model;
 
 namespace Serde.Toml;
 
@@ -79,71 +77,9 @@ internal static class TomlValues
         return info.GetFieldStringName(ordinal);
     }
 
-    public static TomlDateTime ToDateTime(DateTime value)
-    {
-        var precision = GetSecondPrecision(value.Ticks);
-        return value.Kind switch
-        {
-            DateTimeKind.Utc => new TomlDateTime(
-                new DateTimeOffset(value),
-                precision,
-                TomlDateTimeKind.OffsetDateTimeByZ
-            ),
-            DateTimeKind.Local => new TomlDateTime(
-                new DateTimeOffset(value),
-                precision,
-                TomlDateTimeKind.OffsetDateTimeByNumber
-            ),
-            _ => new TomlDateTime(
-                new DateTimeOffset(
-                    DateTime.SpecifyKind(value, DateTimeKind.Unspecified),
-                    TimeSpan.Zero
-                ),
-                precision,
-                TomlDateTimeKind.LocalDateTime
-            ),
-        };
-    }
-
-    public static TomlDateTime ToDateTimeOffset(DateTimeOffset value) =>
-        new(
-            value,
-            GetSecondPrecision(value.Ticks),
-            value.Offset == TimeSpan.Zero
-                ? TomlDateTimeKind.OffsetDateTimeByZ
-                : TomlDateTimeKind.OffsetDateTimeByNumber
-        );
-
-    public static TomlDateTime ToDateOnly(DateOnly value) =>
-        new(value.Year, value.Month, value.Day);
-
-    public static TomlDateTime ToTimeOnly(TimeOnly value) =>
-        new(
-            new DateTimeOffset(value.Ticks, TimeSpan.Zero),
-            GetSecondPrecision(value.Ticks),
-            TomlDateTimeKind.LocalTime
-        );
-
-    private static int GetSecondPrecision(long ticks)
-    {
-        var fractionalTicks = ticks % TimeSpan.TicksPerSecond;
-        if (fractionalTicks == 0)
-        {
-            return 0;
-        }
-
-        var precision = 7;
-        while (fractionalTicks % 10 == 0)
-        {
-            fractionalTicks /= 10;
-            precision--;
-        }
-
-        return precision;
-    }
 }
 
-internal sealed class TomlValueSerializer(Action<object> writeValue, Action? writeNull = null)
+internal sealed class TomlValueSerializer(Action<TomlValue> writeValue, Action? writeNull = null)
     : ISerializer
 {
     public void WriteBool(bool value) => writeValue(value);
@@ -173,11 +109,11 @@ internal sealed class TomlValueSerializer(Action<object> writeValue, Action? wri
         writeNull();
     }
 
-    public void WriteDateTime(DateTime value) => writeValue(TomlValues.ToDateTime(value));
+    public void WriteDateTime(DateTime value) => writeValue(new TomlValue.DateTime(value));
     public void WriteDateTimeOffset(DateTimeOffset value) =>
-        writeValue(TomlValues.ToDateTimeOffset(value));
-    public void WriteDateOnly(DateOnly value) => writeValue(TomlValues.ToDateOnly(value));
-    public void WriteTimeOnly(TimeOnly value) => writeValue(TomlValues.ToTimeOnly(value));
+        writeValue(new TomlValue.DateTimeOffset(value));
+    public void WriteDateOnly(DateOnly value) => writeValue(new TomlValue.Date(value));
+    public void WriteTimeOnly(TimeOnly value) => writeValue(new TomlValue.Time(value));
     public void WriteBytes(ReadOnlyMemory<byte> value) =>
         writeValue(Convert.ToBase64String(value.Span));
 
@@ -190,11 +126,11 @@ internal sealed class TomlValueSerializer(Action<object> writeValue, Action? wri
         {
             case InfoKind.List:
             case InfoKind.Tuple:
-                var array = new TomlArray();
+                var array = new TomlValue.Array();
                 writeValue(array);
                 return new ArraySerializer(array);
             case InfoKind.Dictionary:
-                var table = new TomlTable();
+                var table = new TomlValue.Table();
                 writeValue(table);
                 return new DictionarySerializer(table);
             default:
@@ -215,7 +151,7 @@ internal sealed class TomlValueSerializer(Action<object> writeValue, Action? wri
             );
         }
 
-        var table = new TomlTable();
+        var table = new TomlValue.Table();
         writeValue(table);
         return new TableSerializer(table);
     }
@@ -223,7 +159,7 @@ internal sealed class TomlValueSerializer(Action<object> writeValue, Action? wri
     public ITypeSerializer WriteType(ISerdeInfo info, int fieldCount) => WriteType(info);
 }
 
-internal sealed class ArraySerializer(TomlArray array) : ITypeSerializer
+internal sealed class ArraySerializer(TomlValue.Array array) : ITypeSerializer
 {
     public ISerializer WriteFieldStart(ISerdeInfo typeInfo, int index) =>
         new TomlValueSerializer(array.Add);
@@ -263,16 +199,16 @@ internal sealed class ArraySerializer(TomlArray array) : ITypeSerializer
         throw new NotSupportedException("TOML arrays cannot contain null values.");
 
     public void WriteDateTime(ISerdeInfo typeInfo, int index, DateTime value) =>
-        array.Add(TomlValues.ToDateTime(value));
+        array.Add(new TomlValue.DateTime(value));
 
     public void WriteDateTimeOffset(ISerdeInfo typeInfo, int index, DateTimeOffset value) =>
-        array.Add(TomlValues.ToDateTimeOffset(value));
+        array.Add(new TomlValue.DateTimeOffset(value));
 
     public void WriteDateOnly(ISerdeInfo typeInfo, int index, DateOnly value) =>
-        array.Add(TomlValues.ToDateOnly(value));
+        array.Add(new TomlValue.Date(value));
 
     public void WriteTimeOnly(ISerdeInfo typeInfo, int index, TimeOnly value) =>
-        array.Add(TomlValues.ToTimeOnly(value));
+        array.Add(new TomlValue.Time(value));
 
     public void WriteBytes(ISerdeInfo typeInfo, int index, ReadOnlyMemory<byte> value) =>
         array.Add(Convert.ToBase64String(value.Span));
@@ -293,7 +229,7 @@ internal sealed class ArraySerializer(TomlArray array) : ITypeSerializer
         where T : class? => serialize.Serialize(value, new TomlValueSerializer(array.Add));
 }
 
-internal sealed class DictionarySerializer(TomlTable table) : ITypeSerializer
+internal sealed class DictionarySerializer(TomlValue.Table table) : ITypeSerializer
 {
     private string? _currentKey;
 
@@ -409,7 +345,7 @@ internal sealed class DictionarySerializer(TomlTable table) : ITypeSerializer
         _currentKey = key;
     }
 
-    private void SetValue(object value)
+    private void SetValue(TomlValue value)
     {
         var key = TakeKey();
         table[key] = value;
