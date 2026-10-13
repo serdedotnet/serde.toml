@@ -1,9 +1,8 @@
 using Serde;
-using Tomlyn.Model;
 
 namespace Serde.Toml;
 
-internal sealed class TableSerializer(TomlTable table) : ITypeSerializer
+internal sealed class TableSerializer(TomlValue.Table table) : ITypeSerializer
 {
     public ISerializer WriteFieldStart(ISerdeInfo typeInfo, int index) =>
         CreateFieldSerializer(typeInfo, index);
@@ -64,16 +63,16 @@ internal sealed class TableSerializer(TomlTable table) : ITypeSerializer
     public void WriteNull(ISerdeInfo typeInfo, int index) { }
 
     public void WriteDateTime(ISerdeInfo typeInfo, int index, DateTime value) =>
-        Set(typeInfo, index, TomlValues.ToDateTime(value));
+        Set(typeInfo, index, new TomlValue.DateTime(value));
 
     public void WriteDateTimeOffset(ISerdeInfo typeInfo, int index, DateTimeOffset value) =>
-        Set(typeInfo, index, TomlValues.ToDateTimeOffset(value));
+        Set(typeInfo, index, new TomlValue.DateTimeOffset(value));
 
     public void WriteDateOnly(ISerdeInfo typeInfo, int index, DateOnly value) =>
-        Set(typeInfo, index, TomlValues.ToDateOnly(value));
+        Set(typeInfo, index, new TomlValue.Date(value));
 
     public void WriteTimeOnly(ISerdeInfo typeInfo, int index, TimeOnly value) =>
-        Set(typeInfo, index, TomlValues.ToTimeOnly(value));
+        Set(typeInfo, index, new TomlValue.Time(value));
 
     public void WriteBytes(ISerdeInfo typeInfo, int index, ReadOnlyMemory<byte> value) =>
         Set(typeInfo, index, Convert.ToBase64String(value.Span));
@@ -102,6 +101,6 @@ internal sealed class TableSerializer(TomlTable table) : ITypeSerializer
         );
     }
 
-    private void Set(ISerdeInfo typeInfo, int index, object value) =>
+    private void Set(ISerdeInfo typeInfo, int index, TomlValue value) =>
         table[typeInfo.GetFieldStringName(index)] = value;
 }
