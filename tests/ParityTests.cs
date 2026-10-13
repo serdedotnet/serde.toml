@@ -203,11 +203,16 @@ public partial class ParityTests
         var toml = TomlSerializer.Serialize(expected);
         var actual = TomlDeserializer.Deserialize<FloatRecord>(toml);
 
-        Assert.Contains("finite = 1.0", toml);
-        Assert.Contains("negativeZero = -0.0", toml);
-        Assert.Contains("positiveInfinity = inf", toml);
-        Assert.Contains("negativeInfinity = -inf", toml);
-        Assert.Contains("naN = nan", toml);
+        Assert.Equal(
+            """
+            finite = 1.0
+            negativeZero = -0.0
+            positiveInfinity = inf
+            negativeInfinity = -inf
+            naN = nan
+            """ + "\n",
+            toml
+        );
         Assert.Equal(1, actual.Finite);
         Assert.True(double.IsNegative(actual.NegativeZero));
         Assert.Equal(expected.PositiveInfinity, actual.PositiveInfinity);
